@@ -1,0 +1,2744 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>项目任务看板 · 项目推进明细管理</title>
+<style>
+:root{
+  --primary:#2563eb; --primary-2:#3b82f6; --primary-deep:#1e3a5f;
+  --bg:#f2f6fc; --bg-2:#e9f0fa; --card:#ffffff;
+  --text:#1f2d3d; --text-2:#5b6b80; --border:#dbe4ef;
+  --accent-1:#e8f0fe; --green:#16a34a; --orange:#d97706; --red:#dc2626; --gray:#8b96a5;
+  --shadow:0 2px 10px rgba(30,58,138,.06); --radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+  background:linear-gradient(165deg,#f2f6fc 0%,#f8fbff 55%,#e6eefb 100%);
+  color:var(--text);font-size:13px;line-height:1.6;overflow:hidden;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:13px;color:var(--text)}
+::placeholder{color:#9db0c7}
+
+/* ===== 顶栏 ===== */
+#topbar{display:flex;align-items:center;gap:16px;height:52px;padding:0 16px;
+  background:rgba(255,255,255,.86);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);position:relative;z-index:30}
+.brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;color:var(--primary-deep);white-space:nowrap}
+.brand svg{width:20px;height:20px;stroke:var(--primary)}
+.brand .ver{font-size:10px;color:var(--text-2);font-weight:500;background:var(--accent-1);padding:1px 6px;border-radius:10px}
+#tabs{display:flex;gap:4px;flex:1;min-width:0;overflow-x:auto}
+.tab{padding:6px 14px;border-radius:9px;font-size:13px;color:var(--text-2);white-space:nowrap;display:flex;align-items:center;gap:6px;transition:all .15s}
+.tab svg{width:15px;height:15px}
+.tab:hover{background:var(--bg);color:var(--text)}
+.tab.active{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,.35)}
+.tools{display:flex;align-items:center;gap:8px}
+.search-box{position:relative}
+.search-box svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:#9db0c8}
+.search-box input{width:180px;padding:6px 10px 6px 28px;border:1px solid var(--border);border-radius:9px;background:#f7fafd;outline:none;transition:all .15s}
+.search-box input:focus{border-color:var(--primary-2);background:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:9px;border:1px solid var(--border);background:#fff;color:var(--text);font-size:12.5px;white-space:nowrap;transition:all .15s}
+.btn svg{width:14px;height:14px;stroke:currentColor}
+.btn:hover{border-color:var(--primary-2);color:var(--primary)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn.primary:hover{background:var(--primary-2)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.ghost:hover{background:var(--bg)}
+.btn.danger{color:var(--red);border-color:#f3c6c6}
+.btn.danger:hover{background:#fdf0f0}
+.btn.sm{padding:3px 8px;font-size:12px;border-radius:7px}
+
+/* ===== 布局 ===== */
+#layout{display:flex;height:calc(100% - 52px);position:relative;z-index:10}
+#sidebar{width:220px;min-width:220px;background:rgba(255,255,255,.72);backdrop-filter:blur(8px);
+  border-right:1px solid var(--border);padding:12px 10px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.side-title{font-size:11px;color:var(--text-2);padding:4px 8px;display:flex;justify-content:space-between;align-items:center}
+.side-title .mini{font-size:11px;color:var(--primary);font-weight:600;cursor:pointer}
+.tree-item{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:8px;cursor:pointer;color:var(--text-2);font-size:13px}
+.tree-item svg{width:15px;height:15px;flex:none}
+.tree-item:hover{background:var(--bg)}
+.tree-item.active{background:var(--accent-1);color:var(--primary);font-weight:600}
+.tree-item.group{padding-left:22px}
+.tree-item .cnt{margin-left:auto;font-size:11px;color:#9db0c8}
+.tree-item .ops{display:none;gap:2px}
+.tree-item:hover .ops{display:flex}
+.tree-item .ops button{display:flex;padding:2px;border-radius:5px;color:var(--text-2)}
+.tree-item .ops button:hover{background:#dbe7f6;color:var(--primary)}
+.tree-item .ops svg{width:13px;height:13px}
+.side-add{margin-top:2px;color:var(--primary);border:1px dashed var(--primary-2);border-radius:8px;padding:6px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12.5px;cursor:pointer;background:rgba(255,255,255,.5)}
+.side-add:hover{background:var(--accent-1)}
+.side-add svg{width:14px;height:14px}
+#main{flex:1;overflow:hidden;padding:14px 16px;min-width:0}
+
+/* ===== 页头 ===== */
+.page-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.page-head h2{font-size:16px;font-weight:700;color:var(--primary-deep)}
+.page-head .crumb{color:var(--text-2);font-size:12.5px}
+.page-head .spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:16px;font-size:12px;background:var(--accent-1);color:var(--primary)}
+
+/* ===== 看板 ===== */
+.kanban{display:flex;gap:10px;height:calc(100% - 44px);overflow-x:auto;padding-bottom:8px;align-items:flex-start}
+.kanban-col{width:246px;min-width:246px;background:rgba(255,255,255,.66);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;max-height:100%}
+.kcol-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border)}
+.kcol-idx{width:18px;height:18px;border-radius:6px;background:var(--accent-1);color:var(--primary);font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.kcol-name{font-weight:700;font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kcol-cnt{font-size:11.5px;color:var(--text-2);background:var(--bg);border-radius:10px;padding:1px 8px}
+.kcol-current{width:7px;height:7px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 3px var(--accent-1);flex:none}
+.kcol-body{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:9px;min-height:60px}
+.kcard{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:0 1px 3px rgba(30,58,138,.05);cursor:grab;transition:all .15s;position:relative}
+.kcard:hover{box-shadow:0 4px 14px rgba(30,58,138,.12);border-color:#c7d8f2;transform:translateY(-1px)}
+.kcard.dragging{opacity:.45;transform:rotate(2deg)}
+.kcard.drag-over{border-color:var(--primary);box-shadow:0 0 0 2px rgba(59,130,246,.25)}
+.kcard .kc-title{font-size:13px;font-weight:600;line-height:1.45;word-break:break-word}
+.kcard .kc-title:hover{color:var(--primary)}
+.kcard .kc-sub{font-size:11px;color:#9db0c8;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kcard .kc-node{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;padding:1px 7px;border-radius:9px;background:#f0f4fb;color:var(--text-2);margin-top:5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kcard .kc-meta{display:flex;align-items:center;gap:8px;margin-top:7px;color:var(--text-2);font-size:11.5px;flex-wrap:wrap}
+.kcard .kc-meta .m{display:inline-flex;align-items:center;gap:4px}
+.kcard .kc-meta svg{width:12px;height:12px}
+.kc-prog{margin-top:8px}
+.kc-prog .track{height:5px;background:var(--bg);border-radius:3px;overflow:hidden}
+.kc-prog .fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--primary-2),#7aa7f5)}
+.kc-prog .pt{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-2);margin-top:3px}
+.kcard .kc-foot{display:flex;align-items:center;margin-top:8px;gap:6px}
+.avatar{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,var(--primary-2),#7aa7f5);color:#fff;font-size:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:600;flex:none}
+.avatar.external{background:linear-gradient(135deg,#7d8ea5,#a8b8cd)}
+.due-over{color:var(--red)!important;font-weight:600}
+.kc-more{margin-left:auto;color:#b7c5d8;padding:2px 5px;border-radius:6px;display:inline-flex}
+.kc-more:hover{background:var(--bg);color:var(--text-2)}
+.kc-more svg{width:14px;height:14px}
+.kcol-empty{color:#b7c5d8;font-size:12px;text-align:center;padding:18px 0;border:1.5px dashed var(--border);border-radius:9px}
+.add-card-btn{margin:10px;padding:8px;border-radius:9px;border:1.5px dashed var(--border);color:var(--text-2);display:flex;align-items:center;justify-content:center;gap:5px;font-size:12.5px;transition:all .15s;flex:none}
+.add-card-btn:hover{border-color:var(--primary-2);color:var(--primary);background:var(--accent-1)}
+.add-card-btn svg{width:14px;height:14px}
+
+/* ===== 状态徽章 ===== */
+.st{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:600;padding:1px 8px;border-radius:10px;white-space:nowrap;flex:none}
+.st::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+.st.todo{background:#eef1f5;color:var(--gray)}
+.st.doing{background:var(--accent-1);color:var(--primary)}
+.st.done{background:#e8f5e9;color:var(--green)}
+.st.risk{background:#fde8e8;color:var(--red)}
+.st.overdue{background:#fff3e0;color:var(--orange)}
+
+/* ===== 仪表盘 ===== */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;margin-bottom:14px}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;position:relative;overflow:hidden}
+.stat-card .v{font-size:24px;font-weight:800;color:var(--primary-deep);line-height:1.2}
+.stat-card .v.red{color:var(--red)} .stat-card .v.orange{color:var(--orange)} .stat-card .v.green{color:var(--green)}
+.stat-card .l{font-size:11.5px;color:var(--text-2);margin-top:2px}
+.stat-card::after{content:'';position:absolute;right:-18px;top:-18px;width:64px;height:64px;border-radius:50%;background:radial-gradient(circle,var(--accent-1),transparent 70%)}
+.dash-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:12px;height:calc(100% - 96px);min-height:300px}
+.dash-panel{background:#fff;border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;overflow:hidden}
+.dash-panel .dp-head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;color:var(--primary-deep)}
+.dash-panel .dp-body{flex:1;overflow-y:auto;padding:12px 14px}
+.stage-row{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-size:12.5px}
+.stage-row .nm{width:74px;color:var(--text-2);flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stage-row .bar-track{flex:1;height:18px;background:var(--bg);border-radius:9px;overflow:hidden;position:relative}
+.stage-row .bar-fill{height:100%;border-radius:9px;background:linear-gradient(90deg,var(--primary-2),#7aa7f5)}
+.stage-row .bar-num{width:30px;text-align:right;font-weight:700;color:var(--primary)}
+.mlist{list-style:none}
+.mlist li{display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px dashed var(--border);font-size:12.5px}
+.mlist li:last-child{border-bottom:none}
+.mlist .md{font-size:11px;color:var(--text-2);min-width:86px;text-align:right}
+.mlist .mt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mlist .mp{color:var(--text-2);font-size:11px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mlist .over{color:var(--red);font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+
+/* ===== 成员 ===== */
+.member-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.member-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;cursor:pointer;transition:all .15s}
+.member-card:hover{border-color:var(--primary-2);box-shadow:var(--shadow)}
+.member-card .mc-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.member-card .mc-name{font-weight:700;font-size:13.5px}
+.member-card .mc-kind{font-size:10.5px;padding:1px 7px;border-radius:10px}
+.member-card .mc-kind.i{background:var(--accent-1);color:var(--primary)}
+.member-card .mc-kind.e{background:#f1f3f7;color:var(--text-2)}
+.member-card .mc-org{font-size:11.5px;color:var(--text-2)}
+.member-card .mc-proj{margin-top:6px;font-size:11.5px;color:var(--text-2);border-top:1px dashed var(--border);padding-top:6px}
+
+/* ===== 设置 ===== */
+.settings-group{background:#fff;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden}
+.settings-group .sg-head{display:flex;align-items:center;gap:8px;padding:11px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:13.5px;color:var(--primary-deep)}
+.settings-group .sg-body{padding:14px 16px}
+.stagecfg-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.stagecfg-row .seq{width:22px;color:var(--text-2);font-size:12px;text-align:center}
+.stagecfg-row input[type=text]{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:8px;outline:none}
+.stagecfg-row input:focus{border-color:var(--primary-2)}
+.row-ops{display:flex;gap:4px}
+.row-ops button{display:inline-flex;padding:4px;border-radius:6px;color:var(--text-2)}
+.row-ops button:hover{background:var(--accent-1);color:var(--primary)}
+.row-ops svg{width:14px;height:14px}
+.row-ops button:disabled{opacity:.35;cursor:not-allowed}
+.hint-line{font-size:12px;color:var(--text-2);margin-top:8px}
+
+/* ===== 弹窗 ===== */
+.modal-mask{position:fixed;inset:0;background:rgba(30,58,138,.28);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal-mask.show{display:flex}
+.modal{background:#fff;border-radius:14px;width:640px;max-width:96vw;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 18px 50px rgba(20,40,90,.25);animation:pop .18s ease}
+.modal.lg{width:960px}
+.modal.sm{width:400px}
+@keyframes pop{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border)}
+.modal-head h3{font-size:15px;font-weight:700;color:var(--primary-deep);flex:1;min-width:0}
+.modal-x{display:inline-flex;padding:5px;border-radius:8px;color:var(--text-2)}
+.modal-x:hover{background:var(--bg);color:var(--text)}
+.modal-x svg{width:16px;height:16px}
+.modal-body{padding:16px 18px;overflow-y:auto;flex:1}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--border)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg.full{grid-column:1/-1}
+.fg label{font-size:11.5px;color:var(--text-2);font-weight:600}
+.fg input,.fg select,.fg textarea{padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:#fbfcfe;outline:none;width:100%;transition:all .15s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--primary-2);background:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+.fg textarea{resize:vertical;min-height:56px}
+.seg{display:flex;gap:6px}
+.seg button{flex:1;padding:6px 0;border-radius:8px;border:1px solid var(--border);font-size:12.5px;color:var(--text-2);transition:all .12s}
+.seg button.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.seg button.on.risk{background:var(--red);border-color:var(--red)}
+.seg button.on.done{background:var(--green);border-color:var(--green)}
+.confirm-text{font-size:13.5px;line-height:1.8;padding:6px 0}
+.confirm-text b{color:var(--red)}
+.import-report .ir-line{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:var(--bg);margin-bottom:6px;font-size:13px}
+.ir-line .ir-num{font-weight:800;font-size:16px;min-width:64px}
+.ir-line .ir-num.add{color:var(--green)}.ir-line .ir-num.upd{color:var(--primary)}.ir-line .ir-num.keep{color:var(--text-2)}.ir-line .ir-num.orphan{color:var(--orange)}
+
+/* ===== 项目详情：表头区 + 阶段进度 ===== */
+.pd-crumb{font-size:12px;color:var(--text-2);margin-bottom:10px}
+.pd-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px 16px;font-size:12.5px;background:var(--bg);border-radius:10px;padding:12px}
+.pd-grid .k{color:var(--text-2)}
+.pd-grid .v{font-weight:600}
+.pd-block{margin-top:10px;font-size:12.5px;color:var(--text);background:var(--bg);border-radius:8px;padding:10px;white-space:pre-wrap}
+.pd-block.remarks{background:#fffaf0;border:1px solid #f5e3c3;color:#8a5a00}
+.pd-block-title{font-size:12px;font-weight:700;color:var(--primary-deep);margin:14px 0 6px}
+.stagebar{display:flex;gap:4px;margin:12px 0 4px;flex-wrap:wrap}
+.stagebar .sb{flex:1;min-width:56px;text-align:center;font-size:10.5px;color:var(--text-2);cursor:pointer;padding:4px 2px;border-radius:6px;border:1px solid transparent;transition:all .12s}
+.stagebar .sb:hover{background:var(--bg)}
+.stagebar .sb .sbn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stagebar .sb.done{color:var(--green)}
+.stagebar .sb.done .sbn::before{content:'✓ '}
+.stagebar .sb.cur{background:var(--accent-1);color:var(--primary);font-weight:700;border-color:var(--primary-2)}
+.stagebar .sb .sbp{font-size:9.5px;color:#9db0c8}
+.viewswitch{display:flex;gap:2px;background:var(--bg);border-radius:9px;padding:3px}
+.viewswitch button{padding:5px 14px;border-radius:7px;font-size:12.5px;color:var(--text-2)}
+.viewswitch button.on{background:#fff;color:var(--primary);font-weight:600;box-shadow:0 1px 4px rgba(30,58,138,.12)}
+
+/* ===== 阶段折叠卡 ===== */
+.stagefold{border:1px solid var(--border);border-radius:10px;margin-bottom:9px;overflow:hidden;background:#fbfcfe}
+.stagefold.cur{border-color:var(--primary-2);box-shadow:0 0 0 2px rgba(59,130,246,.12)}
+.sf-head{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;background:#fff}
+.sf-head .idx{width:18px;height:18px;border-radius:6px;background:var(--accent-1);color:var(--primary);font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.sf-head .nm{font-weight:700;font-size:13px;flex:1}
+.sf-head .cnt{font-size:11.5px;color:var(--text-2)}
+.sf-head .arrow{transition:transform .15s;color:#b7c5d8;display:inline-flex}
+.sf-head .arrow svg{width:14px;height:14px}
+.stagefold.open .sf-head .arrow{transform:rotate(180deg)}
+.sf-body{display:none;padding:8px 10px}
+.stagefold.open .sf-body{display:block}
+.task-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:#fff;cursor:pointer;transition:all .12s}
+.task-row:hover{border-color:var(--primary-2)}
+.task-row .tr-name{font-weight:600;font-size:12.5px;flex:1;min-width:0}
+.task-row .tr-node{font-size:10.5px;color:var(--text-2);background:#f0f4fb;border-radius:8px;padding:1px 7px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task-row .tr-dates{font-size:11px;color:var(--text-2);display:flex;gap:8px;white-space:nowrap}
+.task-row .tr-dates .od{color:var(--red);font-weight:600}
+.task-row .tr-deliv{font-size:11px;color:var(--primary);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task-row .avatar{width:20px;height:20px;font-size:9.5px}
+
+/* ===== 推进明细表视图 ===== */
+.detail-table-wrap{border:1px solid var(--border);border-radius:10px;overflow:auto;max-height:52vh;background:#fff}
+table.detail-table{border-collapse:collapse;font-size:12px;width:100%;min-width:860px}
+table.detail-table th{background:linear-gradient(135deg,#c9d6f3,#e8f0fe);color:var(--primary-deep);font-weight:700;padding:9px 10px;border:1px solid var(--border);position:sticky;top:0;z-index:2;white-space:nowrap}
+table.detail-table td{padding:8px 10px;border:1px solid var(--border);vertical-align:top;color:var(--text)}
+table.detail-table td.stagecell{background:var(--bg-2);font-weight:700;color:var(--primary-deep);width:88px;text-align:center;vertical-align:middle}
+table.detail-table td.stagecell .idx{display:block;font-size:10px;color:var(--primary);font-weight:600}
+table.detail-table tr.rowdone td{color:#8fa0b5}
+table.detail-table td.footercell{background:#fffaf0;color:#8a5a00;padding:10px;white-space:pre-wrap}
+table.detail-table td.footercell .ft{font-weight:700;display:block;margin-bottom:4px;font-size:11px;color:#a06a00}
+
+/* ===== 下拉菜单 / Toast ===== */
+.menu{position:fixed;z-index:99;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(20,40,90,.14);padding:5px;display:none;min-width:150px}
+.menu.show{display:block}
+.menu-item{display:flex;align-items:center;gap:8px;padding:7px 11px;border-radius:7px;font-size:12.5px;color:var(--text);width:100%;text-align:left}
+.menu-item:hover{background:var(--accent-1);color:var(--primary)}
+.menu-item svg{width:14px;height:14px}
+.menu-item.danger{color:var(--red)}
+.menu-item.danger:hover{background:#fdf0f0}
+#toasts{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;z-index:200}
+.toast{background:var(--primary-deep);color:#fff;padding:10px 16px;border-radius:10px;font-size:12.5px;box-shadow:0 6px 20px rgba(20,40,90,.3);animation:tin .2s ease;max-width:320px}
+.toast.ok{background:#15803d}.toast.err{background:#b91c1c}
+@keyframes tin{from{transform:translateY(8px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* ===== v2.1 新增样式 ===== */
+/* 项目切换 pills */
+.proj-switch{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.ps-pill{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:7px 14px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--text-2);transition:all .15s;min-width:140px;text-align:left}
+.ps-pill:hover{border-color:var(--primary-2)}
+.ps-pill.on{border-color:var(--primary);background:var(--accent-1);color:var(--primary);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.ps-name{font-weight:700;font-size:12.5px}
+.ps-meta{font-size:10.5px;opacity:.8}
+/* 仪表盘当前阶段卡片 */
+.dp-head2{font-size:13px;font-weight:700;color:var(--primary-deep);margin:0 0 8px}
+.cur-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.cur-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
+.cur-card:hover{border-color:var(--primary-2);box-shadow:var(--shadow);transform:translateY(-1px)}
+.cur-card::after{content:'';position:absolute;right:-20px;top:-20px;width:70px;height:70px;border-radius:50%;background:radial-gradient(circle,var(--accent-1),transparent 70%);pointer-events:none}
+.cc-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.cc-name{font-weight:700;font-size:13.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cc-cust{font-size:11px;color:var(--text-2)}
+.cc-stage{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.cc-stage-pill{font-size:15px;font-weight:800;color:var(--primary);background:var(--accent-1);padding:3px 14px;border-radius:16px}
+.cc-locked{display:inline-flex;color:var(--orange)}
+.cc-locked svg{width:13px;height:13px}
+.cc-km{font-size:12px;color:var(--text-2);background:#f6f9fd;border-radius:8px;padding:6px 10px;margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cc-km.empty{color:#b7c5d8}
+.cc-prog{margin-bottom:6px}
+.cc-prog .track{height:8px;background:var(--bg);border-radius:3px;overflow:hidden}
+.cc-prog .fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--primary-2),#7aa7f5)}
+.cc-prog .pt{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-2);margin-top:3px}
+.cc-meta{display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:8px}
+.cc-total{color:var(--text-2);margin-left:auto}
+.cc-mini{display:flex;gap:3px}
+.cc-mini .cm{flex:1;height:4px;border-radius:2px;background:var(--bg)}
+.cc-mini .cm.done{background:var(--green)}
+.cc-mini .cm.cur{background:var(--primary)}
+/* 项目看板：宽列 + 阶段卡 */
+.kanban-lg .kanban-col{width:300px;min-width:300px}
+.kanban-col.cur-col{border-color:var(--primary-2);box-shadow:0 0 0 2px rgba(59,130,246,.14)}
+.stage-body{padding:10px}
+.stage-card{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff}
+.stage-card.phase-done{border-color:#bcd9c0}
+.stage-card.phase-risk{border-color:#f3c6c6}
+.stage-card.phase-doing{border-color:#c7d8f2}
+.sc-badge{padding:8px 10px 0}
+.sc-km{font-size:11.5px;color:var(--text-2);background:#f6f9fd;margin:8px 10px 0;padding:6px 10px;border-radius:8px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-km:hover{color:var(--primary);border:1px solid var(--primary-2)}
+.sc-km.empty{color:#9db7c5;border:1px dashed var(--border);background:#fff}
+.kc-flag{margin-left:auto;display:inline-flex;padding:3px;border-radius:6px;color:#b7c5d8;flex:none}
+.kc-flag:hover{background:var(--bg);color:var(--primary)}
+.kc-flag.locked{color:var(--orange)}
+/* 阶段卡内 mini 任务行 */
+.mini-task{border:1px solid var(--border);border-radius:9px;padding:7px 10px;margin:8px 10px 0;background:#fff;cursor:pointer;transition:all .12s}
+.mini-task:hover{border-color:var(--primary-2);box-shadow:0 2px 6px rgba(30,58,138,.08)}
+.mt-line1{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.mt-name{font-weight:600;font-size:12px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mt-line2{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--text-2);flex-wrap:wrap}
+.mt-d{color:var(--text-2)}
+.mt-d.od{color:var(--red);font-weight:600}
+.mt-deliv{display:inline-flex;align-items:center;gap:3px;color:var(--primary);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mt-deliv svg{width:11px;height:11px}
+/* 标签 chip */
+.tagchip{display:inline-flex;align-items:center;padding:1px 8px;border-radius:9px;font-size:10px;font-weight:600;flex:none}
+.tagchip.more{background:var(--bg);color:var(--text-2)}
+.tagchip.role{background:var(--accent-1);color:var(--primary)}
+.kc-tags{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
+/* 任务看板列头关键节点 */
+.kcol-km{font-size:10.5px;color:var(--text-2);padding:5px 12px;border-bottom:1px solid var(--border);background:#fbfcfe;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 树：一层项目列表 + 多客户分组标题 */
+#sidebar{width:264px;min-width:264px}
+.tree-item.proj{padding-left:8px}
+.tree-item.proj .txt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree-group{display:flex;align-items:center;gap:7px;padding:8px 8px 4px;color:var(--text-2);font-size:11px;font-weight:700;letter-spacing:.5px;user-select:none}
+.tree-group svg{width:13px;height:13px;flex:none;opacity:.7}
+.tree-group .txt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree-group .cnt{font-size:10px;color:#9db0c8}
+.tree-group .ops{display:none;gap:2px}
+.tree-group:hover .ops{display:flex}
+.tree-group .ops button{display:flex;padding:2px;border-radius:5px;color:var(--text-2)}
+.tree-group .ops button:hover{background:#dbe7f6;color:var(--primary)}
+.tree-group .ops svg{width:12px;height:12px}
+/* 阶段折叠卡关键节点行 */
+.sf-km{font-size:11.5px;color:var(--text-2);background:#f6f9fd;margin:0 12px 8px;padding:6px 10px;border-radius:8px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sf-km:hover{color:var(--primary)}
+.sf-km.empty{color:#9db7c7;background:#fff;border:1px dashed var(--border)}
+.tr-tags{display:inline-flex;gap:4px;align-items:center}
+/* 明细表关键节点列 */
+table.detail-table td.kmcell{background:#fbfcfe;color:var(--text-2);text-align:center;vertical-align:middle}
+table.detail-table td.kmcell .km-empty{color:#b7c5d8;font-size:10px}
+/* 标签选择器 */
+.tag-picker{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fbfcfe}
+.tp-chip{padding:4px 12px;border-radius:14px;font-size:12px;border:1px solid var(--tc);color:var(--tc);background:#fff;transition:all .12s}
+.tp-chip.on{background:var(--tc);color:#fff;font-weight:600}
+.tp-new{display:inline-flex;gap:4px;align-items:center}
+.tp-new input{width:110px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;outline:none}
+/* 标签设置行 */
+.tagcfg-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.tagcfg-row .tcolor{width:16px;height:16px;border-radius:50%;flex:none}
+.tagcfg-row input[type=text]{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:8px;outline:none}
+.tagcfg-row input[type=text]:focus{border-color:var(--primary-2)}
+.tagbuiltin{font-size:10.5px;color:var(--text-2);background:var(--bg);border-radius:8px;padding:1px 7px}
+/* 按项目导出弹窗 */
+.ep-list{max-height:40vh;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:8px}
+.ep-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:12.5px}
+.ep-row:hover{background:var(--bg)}
+.ep-row .ep-name{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ep-row .ep-meta{font-size:11px;color:var(--text-2)}
+/* 设置分组标签 */
+.dm-label{font-size:11.5px;color:var(--text-2);font-weight:600;margin:0 0 6px}
+/* 成员任务分组 */
+.mt-group{margin-bottom:10px}
+.mt-group-head{font-size:12px;font-weight:700;color:var(--primary-deep);padding:4px 2px 6px;border-bottom:1px dashed var(--border);margin-bottom:6px}
+/* 空态 */
+.empty-box{background:#fff;border:1px dashed var(--border);border-radius:var(--radius);color:#b7c5d8;text-align:center;padding:28px;font-size:13px}
+/* 任务看板 toggle */
+.tb-toggle{display:inline-flex;gap:4px;background:var(--bg);border-radius:9px;padding:3px;margin-bottom:10px}
+.tb-toggle button{padding:5px 14px;border-radius:7px;font-size:12.5px;color:var(--text-2)}
+.tb-toggle button.on{background:#fff;color:var(--primary);font-weight:600;box-shadow:0 1px 4px rgba(30,58,138,.12)}
+/* 阶段状态徽章色 */
+.st.phase-done{background:#e8f5e9;color:var(--green)}
+.st.phase-risk{background:#fde8e8;color:var(--red)}
+.st.phase-doing{background:var(--accent-1);color:var(--primary)}
+.st.phase-empty{background:#eef1f5;color:var(--gray)}
+/* ===== v2.2 新增：设置页导出导入大按钮 ===== */
+.dm-hero .sg-head{font-size:14px}
+.dm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.dm-btn{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:#fff;transition:all .15s;text-align:left}
+.dm-btn:hover{border-color:var(--primary-2);box-shadow:var(--shadow);transform:translateY(-1px)}
+.dm-btn .dm-ic{width:36px;height:36px;border-radius:10px;background:var(--accent-1);color:var(--primary);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.dm-btn .dm-ic svg{width:16px;height:16px}
+.dm-btn.primary .dm-ic{background:var(--primary);color:#fff}
+.dm-btn .dm-tx{display:flex;flex-direction:column;gap:1px;min-width:0}
+.dm-btn .dm-t{font-weight:700;font-size:13px;color:var(--text)}
+.dm-btn .dm-d{font-size:10.5px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ===== v2.2 新增：任务意见与讨论 ===== */
+.task-card{cursor:pointer}
+.cm-list{display:flex;flex-direction:column;gap:7px;margin-bottom:10px}
+.cm-item{border:1px solid var(--border);border-radius:10px;background:#fbfcfe;padding:8px 10px}
+.cm-item:hover{border-color:#c7d8f2}
+.cm-head{display:flex;align-items:center;gap:7px;margin-bottom:4px}
+.cm-head .avatar{width:20px;height:20px;font-size:9.5px}
+.cm-author{font-weight:700;font-size:12px;color:var(--primary-deep)}
+.cm-time{font-size:10.5px;color:#9db0c8}
+.cm-del{margin-left:auto;display:inline-flex;padding:2px;border-radius:5px;color:#c3cfdd;opacity:0;transition:opacity .12s}
+.cm-item:hover .cm-del{opacity:1}
+.cm-del:hover{background:#fde8e8;color:var(--red)}
+.cm-del svg{width:12px;height:12px}
+.cm-text{font-size:12.5px;color:var(--text);line-height:1.6;word-break:break-word;background:#fff;border-radius:8px;padding:7px 10px}
+.cm-empty{font-size:12px;color:#b7c5d8;padding:10px 4px;text-align:center;border:1.5px dashed var(--border);border-radius:10px}
+.cm-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cm-form select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:#fbfcfe;outline:none;max-width:150px}
+.cm-form select:focus{border-color:var(--primary-2)}
+.cm-form input{flex:1;min-width:200px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:#fbfcfe;outline:none}
+.cm-form input:focus{border-color:var(--primary-2);background:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+.cm-cnt{color:var(--primary)}
+
+/* ===== v2.2 修复：设置组头图标尺寸（此前无约束导致巨型方块撑爆设置页） ===== */
+.settings-group .sg-head svg{width:16px;height:16px;flex:none}
+.dp-head2 svg{width:16px;height:16px}
+
+
+@media (max-width:900px){
+  #sidebar{width:52px;min-width:52px;padding:10px 6px}
+  #sidebar .side-title span,.tree-item span.txt,.tree-item .cnt{display:none}
+  .search-box input{width:110px}
+  .dash-grid{grid-template-columns:1fr;overflow-y:auto}
+  .form-grid{grid-template-columns:1fr}
+  .pd-grid{grid-template-columns:1fr}
+}
+@media print{
+  body{overflow:visible;background:#fff}
+  #topbar,#sidebar,.viewswitch,.kc-more,#toasts,.modal-foot{display:none!important}
+  .modal-mask{position:static;display:block!important;background:none;padding:0;backdrop-filter:none}
+  .modal{box-shadow:none;max-width:100%;width:100%;max-height:none}
+  .detail-table-wrap{max-height:none;border:none}
+  table.detail-table{min-width:100%}
+}
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    项目任务看板<span class="ver">v2.2</span>
+  </div>
+  <nav id="tabs"></nav>
+  <div class="tools">
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="searchInput" placeholder="搜索项目 / 任务 / 标签" autocomplete="off">
+    </div>
+    <button class="btn" id="btnExport">导出</button>
+    <button class="btn" id="btnImport">导入</button>
+  </div>
+</header>
+
+<div id="layout">
+  <aside id="sidebar">
+    <div class="side-title"><span>项目列表</span><span class="mini" id="btnCollapseTree">全部</span></div>
+    <div id="tree"></div>
+    <button class="side-add" id="btnAddCustomer">＋ 新建项目</button>
+  </aside>
+  <main id="main"></main>
+</div>
+
+<div class="menu" id="menu"></div>
+<div class="modal-mask" id="modalMask"><div class="modal" id="modalBox"></div></div>
+<div id="toasts"></div>
+
+<script id="core-logic">
+/* ================================================================
+ * 核心数据层 v2.1（DOM 无关，可被验证脚本独立测试）
+ * 模型：Customer → Project(内嵌8阶段实例) → Task
+ * 六点修订：四层模型 / 阶段实例化(关键节点阶段级) / 任务标签 /
+ *          按项目整体合并 / v2.0 数据自动迁移
+ * ================================================================ */
+window.KBCore = (function(){
+  'use strict';
+
+  function uid(prefix){
+    return (prefix||'id') + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
+  }
+  function now(){ return new Date().toISOString(); }
+  function stamp(o){ o.createdAt=o.createdAt||now(); o.updatedAt=now(); o.deletedAt=o.deletedAt||null; return o; }
+  function find(list,id){ return list.find(function(x){ return x.id===id; }); }
+  function live(list){ return list.filter(function(x){ return !x.deletedAt; }); }
+  function todayStr(){
+    var d=new Date(); function p(n){return (n<10?'0':'')+n;}
+    return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+  }
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  function setOf(arr){ var s=new Set(); arr.forEach(function(x){s.add(x.id);}); return s; }
+
+  /* ---------- 全局阶段名库：可增不可减 ---------- */
+  var DEFAULT_STAGES = ['商机立项','需求分析','供应商询价','方案评审','招投标','合同签订','项目实施','验收结项'];
+  function defaultStages(){
+    return DEFAULT_STAGES.map(function(name,i){
+      return stamp({ id:uid('stage'), name:name, order:i+1 });
+    });
+  }
+  function addStage(store, name, order){
+    name=(name||'').trim();
+    if(!name) return {ok:false, reason:'请填写阶段名称'};
+    if(live(store.stages).some(function(s){return s.name===name;})) return {ok:false, reason:'阶段名称已存在'};
+    var maxOrder=live(store.stages).reduce(function(m,s){return Math.max(m,s.order||0);},0);
+    var st=stamp({ id:uid('stage'), name:name, order:(order==null)?(maxOrder+1):order });
+    store.stages.push(st);
+    syncAllStageInstances(store);
+    return {ok:true, stage:st};
+  }
+  function renameStage(store, stageId, name){
+    name=(name||'').trim();
+    if(!name) return {ok:false, reason:'阶段名称不能为空'};
+    var st=find(store.stages, stageId);
+    if(!st) return {ok:false, reason:'阶段不存在'};
+    if(live(store.stages).some(function(s){return s.name===name && s.id!==stageId;})) return {ok:false, reason:'阶段名称已存在'};
+    st.name=name; st.updatedAt=now();
+    return {ok:true};
+  }
+  function removeStage(store, stageId){ /* 阶段不可删除 */
+    return {ok:false, reason:'阶段不可删除（保证流程完整性），仅可新增或改名'};
+  }
+  function sortedStages(store){
+    return live(store.stages).slice().sort(function(a,b){ return (a.order||0)-(b.order||0); });
+  }
+  function firstStageId(store){
+    var s=sortedStages(store)[0];
+    return s?s.id:null;
+  }
+  function stageOrderMap(store){
+    var m={};
+    sortedStages(store).forEach(function(s,i){ m[s.id]=i; });
+    return m;
+  }
+
+  /* ---------- 标签库（预设 + 自定义自动入库） ---------- */
+  var TAG_PALETTE=['#2563eb','#7c3aed','#db2777','#ea580c','#d97706','#16a34a','#0891b2','#475569','#be123c','#65a30d'];
+  var DEFAULT_TAG_NAMES=['紧急','对外协调','需领导决策','有依赖','本周重点'];
+  function defaultTags(){
+    return DEFAULT_TAG_NAMES.map(function(n,i){
+      return stamp({ id:uid('tag'), name:n, color:TAG_PALETTE[i%TAG_PALETTE.length], builtin:true });
+    });
+  }
+  function ensureTagByName(store, name){
+    name=(name||'').trim(); if(!name) return null;
+    var t=live(store.tags).find(function(x){return x.name===name;});
+    if(t) return t;
+    t=stamp({ id:uid('tag'), name:name, color:TAG_PALETTE[live(store.tags).length%TAG_PALETTE.length], builtin:false });
+    store.tags.push(t);
+    return t;
+  }
+  function renameTag(store, tagId, name){
+    name=(name||'').trim();
+    if(!name) return {ok:false, reason:'标签名称不能为空'};
+    var t=find(store.tags, tagId); if(!t) return {ok:false, reason:'标签不存在'};
+    if(live(store.tags).some(function(x){return x.name===name && x.id!==tagId;})) return {ok:false, reason:'标签名称已存在'};
+    t.name=name; t.updatedAt=now();
+    return {ok:true};
+  }
+  function removeTag(store, tagId){
+    var t=find(store.tags, tagId); if(!t) return {ok:false, reason:'标签不存在'};
+    t.deletedAt=now(); t.updatedAt=now();
+    live(store.tasks).forEach(function(task){
+      if((task.tagIds||[]).indexOf(tagId)>=0){
+        task.tagIds=(task.tagIds||[]).filter(function(x){return x!==tagId;});
+        task.updatedAt=now();
+      }
+    });
+    return {ok:true};
+  }
+  function tagsOfTask(store, task){
+    return (task.tagIds||[]).map(function(id){ return find(store.tags,id); }).filter(Boolean);
+  }
+  function tagColor(store, tagId){
+    var t=find(store.tags, tagId);
+    return t?(t.color||'#2563eb'):'#2563eb';
+  }
+
+  /* ---------- 任务意见（多人协作评论，每条带提交人） ---------- */
+  function commentsOfTask(store, task){
+    return (task&&Array.isArray(task.comments))?task.comments:[];
+  }
+  function addComment(store, taskId, authorId, text){
+    text=(text||'').trim();
+    if(!text) return {ok:false, reason:'请填写意见内容'};
+    var t=find(store.tasks, taskId);
+    if(!t) return {ok:false, reason:'任务不存在'};
+    if(!Array.isArray(t.comments)) t.comments=[];
+    var cm={ id:uid('cm'), authorId:authorId||null, text:text, createdAt:now() };
+    t.comments.push(cm);
+    t.updatedAt=now();
+    return {ok:true, comment:cm};
+  }
+  function removeComment(store, taskId, commentId){
+    var t=find(store.tasks, taskId);
+    if(!t||!Array.isArray(t.comments)) return {ok:false, reason:'任务不存在'};
+    var before=t.comments.length;
+    t.comments=t.comments.filter(function(c){ return c.id!==commentId; });
+    if(t.comments.length===before) return {ok:false, reason:'意见不存在'};
+    t.updatedAt=now();
+    return {ok:true};
+  }
+  /* 意见列序列化：多条用「；」分隔，每条「成员名：意见内容」 */
+  function commentText(store, task){
+    return commentsOfTask(store, task).map(function(cm){
+      var m=cm.authorId?find(store.members,cm.authorId):null;
+      return (m?m.name:'匿名')+'：'+(cm.text||'');
+    }).join('；');
+  }
+  function parseCommentText(store, text){
+    var list=[];
+    (text||'').split('；').forEach(function(seg){
+      seg=(seg||'').trim(); if(!seg) return;
+      var i=seg.indexOf('：')>=0?seg.indexOf('：'):seg.indexOf(':');
+      var name='', body=seg;
+      if(i>0){ name=seg.slice(0,i).trim(); body=seg.slice(i+1).trim(); }
+      var mid=name?ensureMemberByName(store, name, 'internal'):null;
+      list.push({ id:uid('cm'), authorId:mid, text:body, createdAt:now() });
+    });
+    return list;
+  }
+
+  /* ---------- 初始数据 ---------- */
+  function freshStore(){
+    return { version:2.2, customers:[], members:[], projects:[], tasks:[],
+             stages:defaultStages(), tags:defaultTags() };
+  }
+
+  /* ---------- 任务状态 ---------- */
+  var STATUS = { todo:'未开始', doing:'进行中', done:'已完成', risk:'有风险' };
+  function statusLabel(s){ return STATUS[s]||STATUS.todo; }
+  function isOverdue(task, today){
+    return !!(task.planDate && task.planDate < (today||todayStr()) && task.status!=='done');
+  }
+
+  /* ---------- 阶段实例（每项目 8 个，含阶段级关键节点） ---------- */
+  function stageInstances(p){ return (p&&Array.isArray(p.stages))?p.stages:[]; }
+  function stageInstance(p, stageId){
+    return stageInstances(p).find(function(s){ return s.stageId===stageId; })||null;
+  }
+  function keyMilestoneOf(p, stageId){
+    var inst=stageInstance(p, stageId);
+    return inst?(inst.keyMilestone||''):'';
+  }
+  function ensureStageInstances(store, p){
+    if(!Array.isArray(p.stages)) p.stages=[];
+    var have={};
+    p.stages.forEach(function(s){ have[s.stageId]=1; });
+    sortedStages(store).forEach(function(sn){
+      if(!have[sn.id]){
+        /* v2.0 旧任务 keyMilestone 迁移：取该阶段第一个非空值 */
+        var legacy='';
+        var ts=live(store.tasks).filter(function(t){ return t.projectId===p.id && t.stageId===sn.id; });
+        for(var i=0;i<ts.length;i++){ if(ts[i]&&ts[i].keyMilestone){ legacy=ts[i].keyMilestone; break; } }
+        p.stages.push({ stageId:sn.id, keyMilestone:legacy });
+      }
+    });
+    var o=stageOrderMap(store);
+    p.stages.sort(function(a,b){ return (o[a.stageId]||0)-(o[b.stageId]||0); });
+    return p.stages;
+  }
+  function syncAllStageInstances(store){
+    live(store.projects).forEach(function(p){ ensureStageInstances(store,p); });
+  }
+  function setKeyMilestone(store, projectId, stageId, value){
+    var p=find(store.projects, projectId);
+    if(!p) return {ok:false, reason:'项目不存在'};
+    ensureStageInstances(store, p);
+    var inst=stageInstance(p, stageId);
+    if(!inst) return {ok:false, reason:'阶段不存在'};
+    inst.keyMilestone=(value||'').trim();
+    p.updatedAt=now();
+    return {ok:true, keyMilestone:inst.keyMilestone};
+  }
+
+  /* ---------- 当前阶段（手动锁定优先，自动推导为最靠后有任务阶段） ---------- */
+  function tasksOfProject(store, projectId){
+    return live(store.tasks).filter(function(t){ return t.projectId===projectId; });
+  }
+  function latestTaskStageId(store, projectId){
+    var ts=tasksOfProject(store, projectId);
+    if(!ts.length) return null;
+    var order=stageOrderMap(store);
+    var best=null, bestOrd=-1;
+    ts.forEach(function(t){
+      var o=order[t.stageId]||0;
+      if(o>bestOrd){ bestOrd=o; best=t.stageId; }
+    });
+    return best;
+  }
+  function currentStageIdOf(store, p){
+    if(!p) return null;
+    if(p.currentStageId && live(store.stages).some(function(s){return s.id===p.currentStageId;})){
+      return p.currentStageId;
+    }
+    return latestTaskStageId(store, p.id) || firstStageId(store);
+  }
+
+  /* ---------- 项目 / 阶段统计 ---------- */
+  function projectStats(store, projectId, today){
+    var ts=tasksOfProject(store, projectId);
+    var done=ts.filter(function(t){return t.status==='done';}).length;
+    var risk=ts.filter(function(t){return t.status==='risk';}).length;
+    var overdue=ts.filter(function(t){return isOverdue(t, today);}).length;
+    return { total:ts.length, done:done, risk:risk, overdue:overdue };
+  }
+  function stageStats(store, projectId, stageId, today){
+    var ts=tasksOfProject(store, projectId).filter(function(t){ return t.stageId===stageId; });
+    var done=ts.filter(function(t){return t.status==='done';}).length;
+    var risk=ts.filter(function(t){return t.status==='risk';}).length;
+    var overdue=ts.filter(function(t){return isOverdue(t, today);}).length;
+    return { total:ts.length, done:done, risk:risk, overdue:overdue };
+  }
+  function stagePhase(stats){
+    if(!stats||!stats.total) return 'empty';
+    if(stats.risk||stats.overdue) return 'risk';
+    if(stats.done===stats.total) return 'done';
+    return 'doing';
+  }
+  var PHASE_LABEL={ done:'已完成', risk:'有风险', doing:'进行中', empty:'未开始' };
+
+  /* ---------- 校验 ---------- */
+  function uniqueName(list, name, excludeId){
+    name=(name||'').trim();
+    return !live(list).some(function(x){ return x.name===name && x.id!==excludeId; });
+  }
+
+  /* ---------- 级联删除（软删） ---------- */
+  function softDel(o){ if(o){ o.deletedAt=now(); o.updatedAt=now(); } }
+  function removeCustomer(store, customerId){
+    live(store.projects).filter(function(p){return p.customerId===customerId;}).forEach(function(p){ removeProject(store,p.id); });
+    softDel(find(store.customers,customerId));
+  }
+  function removeProject(store, projectId){
+    live(store.tasks).filter(function(t){return t.projectId===projectId;}).forEach(softDel);
+    softDel(find(store.projects,projectId));
+  }
+
+  /* ---------- 成员交叉 ---------- */
+  function projectsOfMember(store, memberId){
+    return live(store.projects).filter(function(p){
+      return p.leaderId===memberId || (p.memberIds||[]).indexOf(memberId)>=0 || p.ownerContactId===memberId;
+    });
+  }
+  function tasksOfAssignee(store, memberId){
+    return live(store.tasks).filter(function(t){ return t.assigneeId===memberId; });
+  }
+  function roleInProject(p, memberId){
+    if(p.leaderId===memberId) return '总负责人';
+    if(p.ownerContactId===memberId) return '甲方联系人';
+    if((p.memberIds||[]).indexOf(memberId)>=0) return '项目组成员';
+    return '';
+  }
+
+  /* ---------- 按项目整体合并 ---------- */
+  function projFingerprint(p){
+    var e=clone(p);
+    delete e.updatedAt; delete e.createdAt; delete e.deletedAt;
+    return JSON.stringify(e);
+  }
+  function taskFingerprint(t){
+    var e=clone(t);
+    delete e.updatedAt; delete e.createdAt; delete e.deletedAt;
+    delete e.projectId;
+    return JSON.stringify(e);
+  }
+  function tasksFingerprint(store, projectId, list){
+    return (list||[]).filter(function(t){ return t.projectId===projectId; })
+      .map(taskFingerprint).sort().join('|');
+  }
+  function mergeByProject(local, incoming){
+    var stats={ updated:0, added:0, kept:0, orphans:0, orphanIds:[], projectsUpdated:[], projectsAdded:[] };
+    if(!incoming||!Array.isArray(incoming.projects)||!Array.isArray(incoming.tasks)) return stats;
+
+    /* 名库合并：按 id → 按名称对齐（避免默认阶段重复）；建立 stage 引用重映射 */
+    var stageRemap={};
+    (incoming.stages||[]).forEach(function(sn){
+      if(!sn||!sn.id) return;
+      var ex=find(local.stages,sn.id);
+      if(!ex) ex=live(local.stages).find(function(x){ return x.name===sn.name; });
+      if(!ex){ local.stages.push(clone(sn)); }
+      else {
+        if(ex.id!==sn.id) stageRemap[sn.id]=ex.id;
+        if(sn.name&&sn.name!==ex.name){ ex.name=sn.name; ex.updatedAt=now(); }
+      }
+    });
+
+    /* 标签库合并：同 id 补入；同名不同 id 建立重映射 */
+    var tagRemap={};
+    (incoming.tags||[]).forEach(function(tg){
+      if(!tg||!tg.id) return;
+      var ex=find(local.tags,tg.id);
+      if(ex){ return; }
+      var same=live(local.tags).find(function(x){ return x.name===tg.name; });
+      if(same){ tagRemap[tg.id]=same.id; }
+      else { local.tags.push(clone(tg)); }
+    });
+
+    /* 成员合并：按 id → 按 name+kind → 新建 */
+    var memMap={};
+    (incoming.members||[]).forEach(function(m){
+      if(!m||!m.id) return;
+      var ex=find(local.members,m.id);
+      if(ex){ memMap[m.id]=ex.id; return; }
+      var same=live(local.members).find(function(x){ return x.name===m.name && x.kind===m.kind; });
+      if(same){ memMap[m.id]=same.id; return; }
+      local.members.push(clone(m)); memMap[m.id]=m.id;
+    });
+
+    /* 客户合并：按 id → 按名称 */
+    var custMap={};
+    (incoming.customers||[]).forEach(function(c){
+      if(!c||!c.id) return;
+      var ex=find(local.customers,c.id);
+      if(!ex) ex=live(local.customers).find(function(x){ return x.name===c.name; });
+      if(!ex){ ex=stamp({id:c.id,name:c.name||'未命名客户',description:c.description||''}); local.customers.push(ex); }
+      custMap[c.id]=ex.id;
+    });
+
+    function remapStageRefs(rec){
+      if(Array.isArray(rec.stages)){
+        rec.stages.forEach(function(si){ if(stageRemap[si.stageId]) si.stageId=stageRemap[si.stageId]; });
+      }
+      if(rec.currentStageId&&stageRemap[rec.currentStageId]) rec.currentStageId=stageRemap[rec.currentStageId];
+    }
+
+    /* 项目整体替换 / 新增 / 内容一致保留 */
+    var incTasks=incoming.tasks;
+    var beforeCount=live(local.projects).length;
+    incoming.projects.forEach(function(ip){
+      if(!ip||!ip.id) return;
+      var target=null;
+      var ex=find(local.projects, ip.id);
+      if(ex) target=ex;
+      else {
+        var cid=custMap[ip.customerId]||ip.customerId;
+        target=live(local.projects).find(function(x){ return x.customerId===cid && x.name===ip.name; });
+      }
+      if(target){
+        /* 内容一致（项目 + 任务）→ 视为未涉及保留 */
+        if(projFingerprint(target)===projFingerprint(ip) &&
+           tasksFingerprint(local, target.id, local.tasks)===tasksFingerprint(local, target.id, incTasks)){
+          stats.kept++;
+          return;
+        }
+      }
+      var isNew=!target;
+      var rec=clone(ip);
+      remapStageRefs(rec);
+      if(rec.customerId&&custMap[rec.customerId]) rec.customerId=custMap[rec.customerId];
+      if(isNew){
+        local.projects.push(rec);
+        stats.added++; stats.projectsAdded.push(rec.name);
+      } else {
+        var idx=local.projects.indexOf(target);
+        local.projects[idx]=rec;
+        stats.updated++; stats.projectsUpdated.push(rec.name);
+      }
+      if(rec.deletedAt){ rec.deletedAt=null; }
+      /* 该项目旧任务整体软删，插入导入任务（按项目整体为准） */
+      live(local.tasks).filter(function(t){ return t.projectId===rec.id; }).forEach(function(t){
+        t.deletedAt=now(); t.updatedAt=now();
+      });
+      incTasks.filter(function(t){ return t.projectId===ip.id; }).forEach(function(t){
+        if(!t||!t.id) return;
+        var nt=clone(t);
+        nt.projectId=rec.id;
+        if(nt.assigneeId&&memMap[nt.assigneeId]) nt.assigneeId=memMap[nt.assigneeId];
+        if(Array.isArray(nt.tagIds)){
+          nt.tagIds=nt.tagIds.map(function(tid){ return tagRemap[tid]||tid; }).filter(Boolean);
+        } else { nt.tagIds=[]; }
+        if(stageRemap[nt.stageId]) nt.stageId=stageRemap[nt.stageId];
+        local.tasks.push(nt);
+      });
+      ensureStageInstances(local, rec);
+    });
+    stats.kept=Math.max(stats.kept, live(local.projects).length - stats.updated - stats.added);
+    if(beforeCount===0 && stats.added===0) stats.kept=0;
+
+    /* 孤儿检测（引用断裂） */
+    var pids=setOf(live(local.projects));
+    var sids=setOf(live(local.stages));
+    var aids=setOf(live(local.members));
+    live(local.tasks).forEach(function(t){
+      if(!pids.has(t.projectId)||!sids.has(t.stageId)){ stats.orphans++; stats.orphanIds.push(t.id); }
+      else if(t.assigneeId&&!aids.has(t.assigneeId)){ stats.orphans++; stats.orphanIds.push(t.id); }
+    });
+    var cids=setOf(live(local.customers));
+    live(local.projects).forEach(function(p){
+      if(!cids.has(p.customerId)){ stats.orphans++; stats.orphanIds.push(p.id); }
+    });
+    return stats;
+  }
+
+  /* ---------- JSON 导入导出（projectIds 可选：按项目筛选导出） ---------- */
+  function exportJson(store, projectIds){
+    var projects=store.projects, tasks=store.tasks;
+    if(Array.isArray(projectIds)&&projectIds.length){
+      var set=new Set(projectIds);
+      projects=projects.filter(function(p){ return set.has(p.id)&&!p.deletedAt; });
+      tasks=store.tasks.filter(function(t){ return set.has(t.projectId)&&!t.deletedAt; });
+    }
+    return JSON.stringify({
+      meta:{schemaVersion:2.1, exportedAt:now(), app:'project-kanban-v2.1'},
+      stages:store.stages, tags:store.tags, customers:store.customers,
+      members:store.members, projects:projects, tasks:tasks
+    }, null, 1);
+  }
+  function importJson(store, text){
+    var data;
+    try{ data=JSON.parse(text); }catch(e){ return {ok:false, reason:'JSON 解析失败: '+e.message}; }
+    if(!data||!Array.isArray(data.projects)||!Array.isArray(data.tasks)) return {ok:false, reason:'文件格式不正确（缺少 projects/tasks 数组）'};
+    var stats=mergeByProject(store, data);
+    syncAllStageInstances(store);
+    return {ok:true, stats:stats};
+  }
+
+  /* ---------- CSV ---------- */
+  function csvEscape(v){
+    v=(v===null||v===undefined)?'':String(v);
+    return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;
+  }
+  function csvLine(arr){ return arr.map(csvEscape).join(','); }
+  function memberName(store,id){ if(!id) return ''; var m=find(store.members,id); return m?m.name:''; }
+  function stageName(store,id){ var s=find(store.stages,id); return s?s.name:''; }
+  function customerNameOf(store,customerId){ var c=find(store.customers,customerId); return c?c.name:''; }
+  function tagNameList(store, task){
+    return tagsOfTask(store, task).map(function(t){ return t.name; }).join('、');
+  }
+  function exportProjectsCsv(store){
+    var lines=[];
+    lines.push(csvLine(['id','客户','项目名称','承接单位','建设单位','建设单位联系人','项目总负责人','项目组成员','项目概况','补充说明','当前阶段锁定','更新时间']));
+    live(store.projects).forEach(function(p){
+      lines.push(csvLine([p.id, customerNameOf(store,p.customerId), p.name,
+        p.undertaker||'', p.owner||'', memberName(store,p.ownerContactId), memberName(store,p.leaderId),
+        (p.memberIds||[]).map(function(m){return memberName(store,m);}).join('、'),
+        p.overview||'', p.remarks||'',
+        p.currentStageId?stageName(store,p.currentStageId):'',
+        p.updatedAt||'']));
+    });
+    return lines.join('\n');
+  }
+  function exportStagesCsv(store){
+    var lines=[];
+    lines.push(csvLine(['id','项目','阶段','关键节点','更新时间']));
+    live(store.projects).forEach(function(p){
+      ensureStageInstances(store,p);
+      stageInstances(p).forEach(function(inst){
+        lines.push(csvLine([inst.stageId, p.name, stageName(store,inst.stageId), inst.keyMilestone||'', p.updatedAt||'']));
+      });
+    });
+    return lines.join('\n');
+  }
+  function exportTasksCsv(store){
+    var lines=[];
+    lines.push(csvLine(['id','项目','阶段','任务','计划时间','实际时间','状态','交付物','责任人','标签','意见','更新时间']));
+    live(store.tasks).forEach(function(t){
+      var p=find(store.projects,t.projectId);
+      lines.push(csvLine([t.id, p?p.name:'', stageName(store,t.stageId), t.name,
+        t.planDate||'', t.actualDate||'', statusLabel(t.status), t.deliverable||'',
+        memberName(store,t.assigneeId), tagNameList(store,t), commentText(store,t), t.updatedAt||'']));
+    });
+    return lines.join('\n');
+  }
+  function parseCsv(text){
+    var rows=[], row=[], cur='', q=false;
+    for(var i=0;i<text.length;i++){
+      var ch=text[i];
+      if(q){
+        if(ch==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; }
+        else cur+=ch;
+      } else {
+        if(ch==='"') q=true;
+        else if(ch===','){ row.push(cur); cur=''; }
+        else if(ch==='\n'){ row.push(cur); rows.push(row); row=[]; cur=''; }
+        else if(ch!=='\r') cur+=ch;
+      }
+    }
+    if(cur!==''||row.length){ row.push(cur); rows.push(row); }
+    return rows.filter(function(r){ return r.some(function(x){ return String(x).trim()!==''; }); });
+  }
+  function mkGetter(rows, i){
+    var head=rows[0].map(function(h){return String(h).trim();});
+    var idx={}; head.forEach(function(h,j){ idx[h]=j; });
+    return function(k){ return (idx[k]===undefined)?'':String(rows[i][idx[k]]||'').trim(); };
+  }
+  function ensureMemberByName(store, name, kind){
+    if(!name) return null;
+    var m=live(store.members).find(function(x){return x.name===name;});
+    if(!m){ m=stamp({id:uid('mem'),name:name,kind:kind||'internal',org:'',note:''}); store.members.push(m); }
+    return m.id;
+  }
+  function ensureCustomerByName(store, name){
+    var c=live(store.customers).find(function(x){return x.name===name;});
+    if(!c){ c=stamp({id:uid('cust'),name:name,description:''}); store.customers.push(c); }
+    return c.id;
+  }
+  /* 项目 CSV：更新涉及项目的项目字段（按项目合并——不涉及的项目不动） */
+  function importProjectsCsv(store, rows){
+    var added=0, updated=0;
+    for(var i=1;i<rows.length;i++){
+      var get=mkGetter(rows, i);
+      var pname=get('项目名称'); if(!pname) continue;
+      var custId=ensureCustomerByName(store, get('客户')||'未分组客户');
+      var lockName=get('当前阶段锁定');
+      var lockStage=lockName?live(store.stages).find(function(s){return s.name===lockName;}):null;
+      var proj=live(store.projects).find(function(p){return p.customerId===custId&&p.name===pname;});
+      var payload={
+        undertaker:get('承接单位')||'', owner:get('建设单位')||'',
+        ownerContactId:ensureMemberByName(store, get('建设单位联系人'),'external')||null,
+        leaderId:ensureMemberByName(store, get('项目总负责人'),'internal')||null,
+        memberIds:get('项目组成员').split('、').filter(Boolean).map(function(n){return ensureMemberByName(store,n,'internal');}).filter(Boolean),
+        overview:get('项目概况')||'', remarks:get('补充说明')||'',
+        currentStageId: lockStage?lockStage.id:null
+      };
+      if(!proj){
+        proj=stamp({id:uid('proj'),customerId:custId,name:pname});
+        Object.keys(payload).forEach(function(k){ proj[k]=payload[k]; });
+        store.projects.push(proj); added++;
+      } else {
+        Object.keys(payload).forEach(function(k){ proj[k]=payload[k]; });
+        proj.updatedAt=now(); updated++;
+      }
+      ensureStageInstances(store, proj);
+    }
+    return {added:added, updated:updated};
+  }
+  /* 阶段 CSV：更新涉及项目的阶段关键节点 */
+  function importStagesCsv(store, rows){
+    var updated=0;
+    for(var i=1;i<rows.length;i++){
+      var get=mkGetter(rows, i);
+      var pname=get('项目'); var sname=get('阶段'); if(!pname||!sname) continue;
+      var proj=live(store.projects).find(function(p){return p.name===pname;});
+      if(!proj) continue;
+      var st=live(store.stages).find(function(s){return s.name===sname;});
+      if(!st) continue;
+      var r=setKeyMilestone(store, proj.id, st.id, get('关键节点'));
+      if(r.ok) updated++;
+    }
+    return {updated:updated};
+  }
+  /* 任务 CSV：出现于 CSV 的项目，其任务整体以 CSV 为准（按项目合并） */
+  function importTasksCsv(store, rows){
+    var statusMap={};
+    Object.keys(STATUS).forEach(function(k){ statusMap[STATUS[k]]=k; });
+    var byProject={};
+    for(var i=1;i<rows.length;i++){
+      var get=mkGetter(rows, i);
+      var tname=get('任务'); var pname=get('项目'); if(!tname||!pname) continue;
+      if(!byProject[pname]) byProject[pname]=[];
+      byProject[pname].push(get);
+    }
+    var projectsReplaced=0, tasksAdded=0, skipped=0;
+    Object.keys(byProject).forEach(function(pname){
+      var proj=live(store.projects).find(function(p){return p.name===pname;});
+      if(!proj){ skipped+=byProject[pname].length; return; }
+      live(store.tasks).filter(function(t){return t.projectId===proj.id;}).forEach(function(t){
+        t.deletedAt=now(); t.updatedAt=now();
+      });
+      byProject[pname].forEach(function(get){
+        var stageNm=get('阶段');
+        var stage=stageNm?live(store.stages).find(function(s){return s.name===stageNm;}):null;
+        var tagIds=get('标签')?get('标签').split('、').filter(Boolean).map(function(n){
+          var tg=ensureTagByName(store,n); return tg?tg.id:null;
+        }).filter(Boolean):[];
+        var comments=parseCommentText(store, get('意见'));
+        store.tasks.push(C_stamp({
+          id:uid('task'), projectId:proj.id,
+          stageId: stage?stage.id:(currentStageIdOf(store,proj)||firstStageId(store)),
+          name:get('任务'), planDate:get('计划时间')||'', actualDate:get('实际时间')||'',
+          status: statusMap[get('状态')]||'todo', deliverable:get('交付物')||'',
+          assigneeId: ensureMemberByName(store, get('责任人'),'internal')||null,
+          tagIds: tagIds,
+          comments: comments
+        }));
+        tasksAdded++;
+      });
+      projectsReplaced++;
+    });
+    return {projects:projectsReplaced, tasks:tasksAdded, skipped:skipped};
+  }
+  function C_stamp(o){ return stamp(o); }
+
+  /* ---------- v2.0 → v2.1 数据迁移（幂等） ---------- */
+  function migrate(store){
+    if(!store) return false;
+    var changed=false;
+    if(!Array.isArray(store.tags)||!store.tags.length){ store.tags=defaultTags(); changed=true; }
+    if(Array.isArray(store.groups)&&store.groups.length){
+      /* 项目群层移除：项目归入其原所属客户 */
+      live(store.projects).forEach(function(p){
+        if(p.groupId){
+          var g=find(store.groups,p.groupId);
+          if(g){ p.customerId=g.customerId; }
+        }
+        delete p.groupId;
+      });
+      store.groups=[];
+      changed=true;
+    }
+    live(store.projects).forEach(function(p){
+      if(!Array.isArray(p.stages)) { p.stages=[]; changed=true; }
+      if(p.stageId!==undefined){ p.currentStageId=p.stageId; delete p.stageId; changed=true; }
+      var before=JSON.stringify(p.stages);
+      ensureStageInstances(store, p);
+      if(JSON.stringify(p.stages)!==before) changed=true;
+    });
+    live(store.tasks).forEach(function(t){
+      if(t.keyMilestone!==undefined){ delete t.keyMilestone; changed=true; }
+      if(!Array.isArray(t.tagIds)){ t.tagIds=[]; changed=true; }
+      if(!Array.isArray(t.comments)){ t.comments=[]; changed=true; }
+    });
+    if(store.version!==2.2){ store.version=2.2; changed=true; }
+    return changed;
+  }
+
+  return {
+    uid:uid, now:now, stamp:stamp, find:find, live:live, todayStr:todayStr, clone:clone,
+    DEFAULT_STAGES:DEFAULT_STAGES, defaultStages:defaultStages,
+    addStage:addStage, renameStage:renameStage, removeStage:removeStage,
+    sortedStages:sortedStages, firstStageId:firstStageId, stageOrderMap:stageOrderMap,
+    TAG_PALETTE:TAG_PALETTE, DEFAULT_TAG_NAMES:DEFAULT_TAG_NAMES, defaultTags:defaultTags,
+    ensureTagByName:ensureTagByName, renameTag:renameTag, removeTag:removeTag,
+    tagsOfTask:tagsOfTask, tagColor:tagColor,
+    commentsOfTask:commentsOfTask, addComment:addComment, removeComment:removeComment,
+    commentText:commentText, parseCommentText:parseCommentText,
+    freshStore:freshStore, STATUS:STATUS, statusLabel:statusLabel, isOverdue:isOverdue,
+    stageInstances:stageInstances, stageInstance:stageInstance, keyMilestoneOf:keyMilestoneOf,
+    ensureStageInstances:ensureStageInstances, syncAllStageInstances:syncAllStageInstances,
+    setKeyMilestone:setKeyMilestone,
+    tasksOfProject:tasksOfProject, latestTaskStageId:latestTaskStageId, currentStageIdOf:currentStageIdOf,
+    projectStats:projectStats, stageStats:stageStats, stagePhase:stagePhase, PHASE_LABEL:PHASE_LABEL,
+    uniqueName:uniqueName,
+    removeCustomer:removeCustomer, removeProject:removeProject,
+    projectsOfMember:projectsOfMember, tasksOfAssignee:tasksOfAssignee, roleInProject:roleInProject,
+    mergeByProject:mergeByProject, importJson:importJson, exportJson:exportJson,
+    exportProjectsCsv:exportProjectsCsv, exportStagesCsv:exportStagesCsv, exportTasksCsv:exportTasksCsv,
+    parseCsv:parseCsv, importProjectsCsv:importProjectsCsv, importStagesCsv:importStagesCsv, importTasksCsv:importTasksCsv,
+    memberName:memberName, stageName:stageName, customerNameOf:customerNameOf, tagNameList:tagNameList,
+    migrate:migrate
+  };
+})();
+
+</script>
+
+<script id="ui-logic">
+/* ================================================================
+ * UI 层 v2.1：四层树 / 仪表盘当前阶段卡 / 项目看板8阶段卡 /
+ * 任务看板标签 / 成员详情联动 / 按项目导出导入合并
+ * ================================================================ */
+(function(){
+  'use strict';
+  var C = window.KBCore;
+
+  var store = null;
+  var scope = {customerId:null};
+  var view = 'dashboard';
+  var searchKw = '';
+  var selectedProjectId = null;
+  var taskBoardAll = false;
+  var STORE_KEY = 'project_kanban_v2';
+
+  function $(s){ return document.querySelector(s); }
+  function $$(s){ return Array.from(document.querySelectorAll(s)); }
+  function esc(s){
+    return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function initials(name){ return String(name||'?').slice(0,1); }
+  function dayOffset(n){
+    var d=new Date(); d.setDate(d.getDate()+n);
+    function p(x){return (x<10?'0':'')+x;}
+    return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+  }
+  var ICON = {
+    board:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+    dash:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
+    list:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+    users:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    gear:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+    plus:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
+    trash:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>',
+    edit:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>',
+    flag:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>',
+    more:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>',
+    calendar:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+    x:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+    down:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+    download:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>',
+    upload:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>',
+    building:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M8 10h.01M16 10h.01M12 10h.01M8 14h.01M16 14h.01M12 14h.01"/></svg>',
+    box:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>',
+    print:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>',
+    lock:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+    chat:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+    send:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>'
+  };
+
+  /* ---------- 存储 ---------- */
+  function save(){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
+    catch(e){ toast('保存失败：存储空间可能已满','err'); }
+  }
+  function load(){
+    try{
+      var raw=localStorage.getItem(STORE_KEY);
+      if(raw){
+        var data=JSON.parse(raw);
+        if(data&&Array.isArray(data.projects)&&Array.isArray(data.stages)){
+          store=data;
+          if(C.migrate(store)){
+            save();
+            toast('数据已自动升级到 v2.1 结构','ok');
+          }
+          return;
+        }
+      }
+    }catch(e){}
+    store=C.freshStore();
+    seedDemo();
+    save();
+  }
+  function resetDemo(){ store=C.freshStore(); seedDemo(); save(); renderAll(); toast('已载入示例数据'); }
+
+  /* ---------- 五大项目示例数据（v2.1：直挂中国数联） ---------- */
+  function seedDemo(){
+    var mZhang=C.stamp({id:C.uid('mem'),name:'张伟',kind:'internal',org:'上海邮电设计院'});
+    var mLi=C.stamp({id:C.uid('mem'),name:'李敏',kind:'internal',org:'上海邮电设计院'});
+    var mWang=C.stamp({id:C.uid('mem'),name:'王强',kind:'internal',org:'上海邮电设计院'});
+    var mZhao=C.stamp({id:C.uid('mem'),name:'赵静',kind:'internal',org:'上海邮电设计院'});
+    store.members.push(mZhang,mLi,mWang,mZhao);
+    var contacts=[
+      C.stamp({id:C.uid('mem'),name:'钱科长',kind:'external',org:'重庆电信'}),
+      C.stamp({id:C.uid('mem'),name:'孙主任',kind:'external',org:'集团云公司'}),
+      C.stamp({id:C.uid('mem'),name:'周工',kind:'external',org:'数据中心'}),
+      C.stamp({id:C.uid('mem'),name:'吴经理',kind:'external',org:'省公司'}),
+      C.stamp({id:C.uid('mem'),name:'郑总',kind:'external',org:'产业互联部'})
+    ];
+    contacts.forEach(function(c){ store.members.push(c); });
+    var cust=C.stamp({id:C.uid('cust'),name:'中国数联',description:'五大重点项目客户'});
+    store.customers.push(cust);
+
+    var seeds=[
+      { name:'重庆业务区扩容＋灾备项目', undertaker:'上海邮电设计院', owner:'中国电信重庆分公司',
+        contact:contacts[0], leader:mZhang, members:[mZhang,mLi,mWang],
+        overview:'对重庆业务区核心机房进行扩容，并建设异地灾备中心，实现业务级容灾能力。覆盖机房土建配套、网络改造、系统集成与迁移演练。',
+        remarks:'重点难点：旧机房在网运行中割接窗口紧张，需分四批灰度迁移。\n需要支持：请协调厂商提前到货备件。\n决策建议：灾备等级建议按业务级（RPO≈0）申报预算。',
+        km:{0:'完成立项批复',1:'需求规格书评审通过',2:'完成询价',3:'技术方案通过评审'},
+        tasks:[
+          [0,[['需求沟通',-30,-28,'done','沟通纪要',mZhang,['对外协调']],['立项材料编制',-27,-25,'done','立项申请表',mLi],['立项审批',-24,-22,'done','批复文件',mZhang]]],
+          [1,[['现场调研',-21,-18,'done','调研报告',mWang],['需求说明书',-17,-12,'done','需求规格书',mLi],['需求确认会',-11,-10,'doing','会议纪要',mZhang]]],
+          [2,[['询价函编制',-9,0,'doing','询价文件',mLi],['厂商报价收集',3,0,'todo','',mWang,['紧急']]]],
+          [3,[['技术方案编制',7,0,'todo','',mLi]]]
+        ]
+      },
+      { name:'云平台PaaS平台采购项目', cust:'中国数联', owner:'集团云计算公司',
+        contact:contacts[1], leader:mLi, members:[mLi,mZhao],
+        overview:'采购容器化PaaS平台，支撑上层应用云原生改造，含平台软件许可、实施服务与三年原厂维保。',
+        remarks:'重点难点：多厂商产品兼容性差异大，POC测试项需要统一基准。\n需要支持：请安排测试环境两周。',
+        km:{0:'完成立项',1:'需求评审通过',2:'POC 测试通过',3:'方案评审通过',4:'发布招标公告'},
+        tasks:[
+          [0,[['商机登记',-40,-38,'done','',mLi],['立项审批',-37,-35,'done','立项批复',mLi]]],
+          [1,[['需求梳理',-34,-30,'done','需求清单',mZhao],['规格书编制',-29,-26,'done','技术规格书',mLi],['需求评审',-25,-25,'done','评审纪要',mLi]]],
+          [2,[['市场询价',-24,-20,'done','询价汇总',mZhao],['POC测试',-19,-15,'done','POC报告',mZhao,['有依赖']]]],
+          [3,[['方案编制',-14,-8,'done','技术方案',mLi],['方案评审会',-7,-6,'risk','评审意见',mLi]]],
+          [4,[['招标文件编制',2,0,'todo','',mLi,['本周重点']]]]
+        ]
+      },
+      { name:'HPFS存储建设采购项目', owner:'省数据中心',
+        contact:contacts[2], leader:mWang, members:[mWang,mLi],
+        overview:'建设高性能文件存储（HPFS）集群，承载AI训练与渲染业务的海量小文件读写，含集群软件与运维服务。',
+        remarks:'需要支持：性能测试指标需与业务方联合确认。\n决策建议：优先支持NFSv4协议降级兼容。',
+        km:{0:'完成立项批复',1:'性能需求确认',2:'完成询价',3:'方案评审通过',4:'完成招标定标',5:'完成合同签订'},
+        tasks:[
+          [0,[['商机沟通',-60,-58,'done','',mWang],['立项审批',-57,-55,'done','批复',mWang]]],
+          [1,[['性能需求分析',-54,-50,'done','性能需求书',mLi],['容量规划',-49,-46,'done','容量报告',mWang]]],
+          [2,[['三家厂商询价',-45,-40,'done','询价对比表',mWang]]],
+          [3,[['技术方案',-39,-33,'done','方案文档',mLi],['方案评审',-32,-30,'done','评审结论',mWang]]],
+          [4,[['招标书编制',-29,-20,'done','招标文件',mLi],['投标与开标',-19,-9,'done','开标记录',mWang],['中标公示',-8,-5,'done','中标通知',mWang]]],
+          [5,[['商务谈判',-4,0,'doing','',mWang,['对外协调']]]]
+        ]
+      },
+      { name:'总集成项目', owner:'集团客户服务部',
+        contact:contacts[3], leader:mZhang, members:[mZhang,mWang,mZhao],
+        overview:'对各子项目进行总集成：统一接口规范、联调测试、割接方案与整体交付，覆盖网络、平台、应用三层。',
+        remarks:'重点难点：子项目进度差异大，联调依赖HPFS与PaaS先交付。\n需要支持：需要专职联调环境管理员一名。\n决策建议：建议设立每周集成例会机制。',
+        km:{0:'完成立项',1:'集成需求梳理完成',2:'完成询价',3:'集成方案定稿',4:'完成招标定标',5:'完成合同签订',6:'进场开工'},
+        tasks:[
+          [0,[['商机立项',-52,-50,'done','',mZhang]]],
+          [1,[['集成需求梳理',-49,-42,'done','集成需求书',mZhao]]],
+          [2,[['集成商询价',-41,-37,'done','询价表',mWang]]],
+          [3,[['总体集成方案',-36,-27,'done','集成方案',mZhang]]],
+          [4,[['招标与定标',-26,-12,'done','定标文件',mZhang]]],
+          [5,[['合同谈判',-11,-4,'done','合同草案',mZhang],['合同签订',-3,-2,'done','合同正本',mZhang]]],
+          [6,[['进场准备',-1,0,'doing','进场计划',mWang],['接口联调',14,0,'todo','',mZhao,['有依赖']]]]
+        ]
+      },
+      { name:'供应链生态协同平台项目', owner:'中国数联产业生态部',
+        contact:contacts[4], leader:mZhao, members:[mZhao,mLi],
+        overview:'建设供应链生态协同平台，连接核心企业与上下游供应商，提供订单协同、对账结算与金融对接能力。',
+        remarks:'决策建议：建议首期聚焦订单协同场景，金融对接二期再上。',
+        km:{0:'完成立项申请',1:'完成生态调研'},
+        tasks:[
+          [0,[['业务对接',-6,0,'doing','沟通纪要',mZhao,['对外协调']],['立项申请',4,0,'todo','',mLi]]],
+          [1,[['生态调研',12,0,'todo','',mLi]]]
+        ]
+      }
+    ];
+
+    seeds.forEach(function(sd){
+      var proj=C.stamp({id:C.uid('proj'),customerId:cust.id,name:sd.name,
+        undertaker:sd.undertaker||'上海邮电设计院', owner:sd.owner,
+        ownerContactId:sd.contact.id, leaderId:sd.leader.id,
+        memberIds:sd.members.map(function(m){return m.id;}),
+        overview:sd.overview, remarks:sd.remarks});
+      store.projects.push(proj);
+      C.ensureStageInstances(store,proj);
+      (function(){ /* 关键节点 */
+        var km=sd.km||{};
+        Object.keys(km).forEach(function(k){
+          var idx=parseInt(k,10);
+          var s=C.sortedStages(store)[idx];
+          if(s){ var inst=C.stageInstance(proj,s.id); if(inst) inst.keyMilestone=km[k]; }
+        });
+      })();
+      sd.tasks.forEach(function(st){
+        st[1].forEach(function(td){
+          store.tasks.push(C.stamp({
+            id:C.uid('task'), projectId:proj.id, stageId:C.sortedStages(store)[st[0]].id,
+            name:td[0], planDate:dayOffset(td[1]), actualDate:td[2]==null?'':dayOffset(td[2]),
+            status:td[3], deliverable:td[4]||'', assigneeId:td[5]?td[5].id:null,
+            tagIds:(td[6]||[]).map(function(n){var t=C.ensureTagByName(store,n);return t?t.id:null;}).filter(Boolean)
+          }));
+        });
+      });
+    });
+  }/* ---------- Toast / Modal / Menu ---------- */
+  function toast(msg,type){
+    var el=document.createElement('div');
+    el.className='toast '+(type||'');
+    el.textContent=msg;
+    $('#toasts').appendChild(el);
+    setTimeout(function(){ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(function(){el.remove();},320); },2600);
+  }
+  function openModal(html, cls){
+    $('#modalBox').innerHTML=html;
+    $('#modalBox').className='modal '+(cls||'');
+    $('#modalMask').classList.add('show');
+  }
+  function closeModal(){ $('#modalMask').classList.remove('show'); }
+  $('#modalMask').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
+  function confirmBox(title, text, onYes, danger){
+    openModal(
+      '<div class="modal-head"><h3>'+esc(title)+'</h3><button class="modal-x" data-close>'+ICON.x+'</button></div>'+
+      '<div class="modal-body"><div class="confirm-text">'+text+'</div></div>'+
+      '<div class="modal-foot"><button class="btn" data-close>取消</button><button class="btn '+(danger?'danger':'primary')+'" id="confirmYes">确认</button></div>','sm');
+    $('#confirmYes').onclick=function(){ closeModal(); onYes&&onYes(); };
+  }
+  document.addEventListener('click', function(e){
+    if(e.target.closest('[data-close]')) closeModal();
+    if(!e.target.closest('#menu')) $('#menu').classList.remove('show');
+  });
+  var menuCtx=null;
+  function openMenu(x,y,items){
+    var m=$('#menu');
+    m.innerHTML=items.map(function(it){
+      return '<button class="menu-item'+(it.danger?' danger':'')+'" data-act="'+esc(it.act)+'">'+(it.icon||'')+esc(it.label)+'</button>';
+    }).join('');
+    m.classList.add('show');
+    var r=m.getBoundingClientRect();
+    m.style.left=Math.min(x, window.innerWidth-r.width-8)+'px';
+    m.style.top=Math.min(y, window.innerHeight-r.height-8)+'px';
+    m.querySelectorAll('[data-act]').forEach(function(b){
+      b.addEventListener('click', function(){
+        m.classList.remove('show');
+        menuCtx&&menuCtx[b.getAttribute('data-act')]&&menuCtx[b.getAttribute('data-act')]();
+      });
+    });
+  }
+
+  /* ---------- 范围与过滤 ---------- */
+  function scopeCustomers(){ return C.live(store.customers); }
+  function scopeProjects(){
+    var ps=C.live(store.projects);
+    if(scope.customerId){ ps=ps.filter(function(p){return p.customerId===scope.customerId;}); }
+    if(searchKw){
+      var kw=searchKw.toLowerCase();
+      var pids=new Set();
+      C.live(store.tasks).forEach(function(t){
+        if(t.name.toLowerCase().indexOf(kw)>=0||(t.deliverable||'').toLowerCase().indexOf(kw)>=0){
+          pids.add(t.projectId);
+        }
+      });
+      C.live(store.tags).forEach(function(tg){
+        if(tg.name.toLowerCase().indexOf(kw)>=0){
+          C.live(store.tasks).forEach(function(t){
+            if((t.tagIds||[]).indexOf(tg.id)>=0) pids.add(t.projectId);
+          });
+        }
+      });
+      ps=ps.filter(function(p){
+        return p.name.toLowerCase().indexOf(kw)>=0||pids.has(p.id);
+      });
+    }
+    return ps;
+  }
+  function scopeTasks(){
+    var pids=new Set(scopeProjects().map(function(p){return p.id;}));
+    var ts=C.live(store.tasks).filter(function(t){return pids.has(t.projectId);});
+    if(searchKw){
+      var kw=searchKw.toLowerCase();
+      var tagIds=new Set();
+      C.live(store.tags).forEach(function(tg){ if(tg.name.toLowerCase().indexOf(kw)>=0) tagIds.add(tg.id); });
+      ts=ts.filter(function(t){
+        var p=C.find(store.projects,t.projectId);
+        return t.name.toLowerCase().indexOf(kw)>=0||
+          (t.deliverable||'').toLowerCase().indexOf(kw)>=0||
+          (p&&p.name.toLowerCase().indexOf(kw)>=0)||
+          (t.tagIds||[]).some(function(id){return tagIds.has(id);});
+      });
+    }
+    return ts;
+  }
+  function scopeLabel(){
+    if(scope.customerId){ var c=C.find(store.customers,scope.customerId); return c?c.name:''; }
+    return '全部客户';
+  }
+
+  /* ---------- 导航 ---------- */
+  var TABS=[
+    {id:'dashboard',label:'仪表盘',icon:ICON.dash},
+    {id:'project',  label:'项目看板',icon:ICON.board},
+    {id:'task',     label:'任务看板',icon:ICON.list},
+    {id:'members',  label:'成员',icon:ICON.users},
+    {id:'settings', label:'设置',icon:ICON.gear}
+  ];
+  function renderTabs(){
+    $('#tabs').innerHTML=TABS.map(function(t){
+      return '<button class="tab'+(view===t.id?' active':'')+'" data-view="'+t.id+'">'+t.icon+esc(t.label)+'</button>';
+    }).join('');
+    $$('#tabs .tab').forEach(function(b){
+      b.addEventListener('click', function(){
+        view=b.getAttribute('data-view');
+        renderTabs(); renderMain();
+      });
+    });
+  }
+  function renderTree(){
+    var box=$('#tree'); var html='';
+    var customers=scopeCustomers();
+    var multiCust=customers.length>1;
+    customers.forEach(function(c){
+      var ps=C.live(store.projects).filter(function(p){return p.customerId===c.id;});
+      if(multiCust){
+        /* 多客户：客户仅作分组小标题（一层项目为主） */
+        html+='<div class="tree-group" data-custgrp="'+esc(c.id)+'">'+
+          ICON.building+'<span class="txt">'+esc(c.name)+'</span><span class="cnt">'+ps.length+'</span>'+
+          '<span class="ops"><button data-op="edit-cust" data-id="'+esc(c.id)+'" title="编辑客户">'+ICON.edit+'</button>'+
+          '<button data-op="del-cust" data-id="'+esc(c.id)+'" title="删除客户">'+ICON.trash+'</button></span></div>';
+      }
+      ps.forEach(function(p){
+        html+='<div class="tree-item proj'+(selectedProjectId===p.id?' active':'')+'" data-proj="'+esc(p.id)+'" title="'+esc(p.name)+'">'+
+          ICON.box+'<span class="txt">'+esc(p.name)+'</span>'+
+          '<span class="ops"><button data-op="edit-proj" data-id="'+esc(p.id)+'" title="编辑项目">'+ICON.edit+'</button>'+
+          '<button data-op="del-proj" data-id="'+esc(p.id)+'" title="删除项目">'+ICON.trash+'</button></span></div>';
+      });
+    });
+    if(!C.live(store.projects).length){ html='<div style="color:#b7c5d8;font-size:12px;padding:10px 8px;">暂无项目，点下方新建</div>'; }
+    box.innerHTML=html;
+    box.querySelectorAll('[data-proj]').forEach(function(el){
+      el.addEventListener('click', function(){
+        var pid=el.getAttribute('data-proj');
+        selectedProjectId=pid; view='project';
+        renderTree(); renderMain();
+      });
+    });
+    box.querySelectorAll('[data-op]').forEach(function(el){
+      el.addEventListener('click', function(e){
+        e.stopPropagation();
+        var op=el.getAttribute('data-op'); var id=el.getAttribute('data-id');
+        if(op==='edit-cust') openCustomerForm(id);
+        if(op==='del-cust'){
+          confirmBox('删除客户','将级联删除该客户下所有项目与任务，不可恢复。确认删除 <b>'+esc((C.find(store.customers,id)||{}).name||'')+'</b>？',
+            function(){ C.removeCustomer(store,id); save(); renderAll(); toast('已删除客户','ok'); }, true);
+        }
+        if(op==='edit-proj') openProjectEditForm(id);
+        if(op==='del-proj'){
+          confirmBox('删除项目','将级联删除该项目全部阶段与任务。确认删除 <b>'+esc((C.find(store.projects,id)||{}).name||'')+'</b>？',
+            function(){ C.removeProject(store,id); if(selectedProjectId===id) selectedProjectId=null; save(); renderAll(); toast('已删除项目','ok'); }, true);
+        }
+      });
+    });
+    $('#btnCollapseTree').onclick=function(){ scope={customerId:null}; renderTree(); renderMain(); };
+  }
+
+  function renderAll(){ renderTabs(); renderTree(); renderMain(); }
+  function renderMain(){
+    var main=$('#main');
+    if(view==='dashboard') return renderDashboard(main);
+    if(view==='project')  return renderProjectBoard(main);
+    if(view==='task')     return renderTaskBoard(main);
+    if(view==='members')  return renderMembers(main);
+    if(view==='settings') return renderSettings(main);
+  }
+
+  /* ---------- 仪表盘：当前阶段卡一览 ---------- */
+  function renderDashboard(main){
+    var today=C.todayStr();
+    var projects=scopeProjects();
+    var tasks=scopeTasks();
+    var done=tasks.filter(function(t){return t.status==='done';}).length;
+    var risk=tasks.filter(function(t){return t.status==='risk';}).length;
+    var overdue=tasks.filter(function(t){return C.isOverdue(t,today);}).length;
+    var rate=tasks.length?Math.round(done/tasks.length*100):0;
+    var riskList=tasks.filter(function(t){return t.status==='risk'||C.isOverdue(t,today);})
+      .sort(function(a,b){return (a.planDate||'').localeCompare(b.planDate||'');}).slice(0,12);
+    var orderMap=C.stageOrderMap(store);
+    var html=
+    '<div class="page-head"><h2>仪表盘</h2><span class="crumb">'+esc(scopeLabel())+'</span><span class="spacer"></span>'+
+    '<span class="pill">'+esc(today)+'</span></div>'+
+    '<div class="stats">'+
+      '<div class="stat-card"><div class="v">'+projects.length+'</div><div class="l">项目</div></div>'+
+      '<div class="stat-card"><div class="v">'+tasks.length+'</div><div class="l">任务总数</div></div>'+
+      '<div class="stat-card"><div class="v green">'+rate+'%</div><div class="l">任务完成率（'+done+'/'+tasks.length+'）</div></div>'+
+      '<div class="stat-card"><div class="v red">'+risk+'</div><div class="l">有风险任务</div></div>'+
+      '<div class="stat-card"><div class="v orange">'+overdue+'</div><div class="l">逾期任务</div></div>'+
+    '</div>'+
+    '<div class="dp-head2">项目当前阶段（点击卡片进入该项目看板）</div>'+
+    '<div class="cur-grid">'+
+      (projects.length?projects.map(function(p){
+        var cur=C.currentStageIdOf(store,p);
+        var stN=C.find(store.stages,cur);
+        var sst=C.stageStats(store,p.id,cur,today);
+        var pst=C.projectStats(store,p.id,today);
+        var km=C.keyMilestoneOf(p,cur);
+        var pct=sst.total?Math.round(sst.done/sst.total*100):0;
+        var curOrd=orderMap[cur]||0;
+        var mini=C.sortedStages(store).map(function(s,si){
+          var cls=si<curOrd?'done':(si===curOrd?'cur':'');
+          return '<span class="cm '+cls+'" title="'+esc(s.name)+'"></span>';
+        }).join('');
+        return '<div class="cur-card" data-open="goproject:'+esc(p.id)+'" title="点击进入该项目看板">'+
+          '<div class="cc-top"><span class="cc-name">'+esc(p.name)+'</span>'+
+            '<span class="cc-cust">'+esc(C.customerNameOf(store,p.customerId))+'</span></div>'+
+          '<div class="cc-stage"><span class="cc-stage-pill">'+esc(stN?stN.name:'')+'</span>'+
+            (p.currentStageId?'<span class="cc-locked" title="已手动锁定当前阶段">'+ICON.lock+'</span>':'')+'</div>'+
+          (km?'<div class="cc-km">◆ '+esc(km)+'</div>':'<div class="cc-km empty">关键节点未设置</div>')+
+          '<div class="cc-prog"><div class="track"><div class="fill" style="width:'+pct+'%"></div></div>'+
+            '<div class="pt"><span>阶段任务 '+sst.done+'/'+sst.total+'</span><span>'+pct+'%</span></div></div>'+
+          '<div class="cc-meta">'+
+            (pst.risk?'<span class="st risk">风险 '+pst.risk+'</span>':'')+
+            (pst.overdue?'<span class="st overdue">逾期 '+pst.overdue+'</span>':'')+
+            '<span class="cc-total">全项目 '+pst.done+'/'+pst.total+'</span></div>'+
+          '<div class="cc-mini">'+mini+'</div>'+
+        '</div>';
+      }).join(''):'<div class="empty-box">暂无项目，请先在项目看板新建</div>')+
+    '</div>'+
+    '<div class="dash-grid" style="margin-top:14px;">'+
+      '<div class="dash-panel" style="grid-column:1/-1;"><div class="dp-head">风险与逾期任务（共 '+(risk+overdue)+'）</div><div class="dp-body"><ul class="mlist">'+
+        (riskList.length?riskList.map(function(t){
+          var isRisk=t.status==='risk';
+          var p=C.find(store.projects,t.projectId);
+          return '<li><span class="dot" style="background:'+(isRisk?'var(--red)':'var(--orange)')+'"></span>'+
+            '<span class="st '+(isRisk?'risk':'overdue')+'">'+(isRisk?'有风险':'逾期')+'</span>'+
+            (t.planDate?'<span class="md'+(C.isOverdue(t,today)?' over':'')+'">'+esc(t.planDate)+'</span>':'<span class="md">—</span>')+
+            '<span class="mt">'+esc(t.name)+'</span><span class="mp">'+esc(p?p.name:'')+'</span></li>';
+        }).join(''):'<li style="border:none;color:#b7c5d8;">无风险与逾期任务</li>')+
+      '</ul></div></div>'+
+    '</div>';
+    main.innerHTML=html;
+  }
+
+  /* ================================================================
+   * 项目看板：选中项目 → 8 张阶段卡（关键节点 + 任务小表格）
+   * ================================================================ */
+  function renderProjectBoard(main){
+    var projects=scopeProjects();
+    var today=C.todayStr();
+    if(!projects.length){
+      main.innerHTML='<div class="page-head"><h2>项目看板</h2><span class="crumb">'+esc(scopeLabel())+'</span><span class="spacer"></span>'+
+        '<button class="btn primary" id="btnNewProject0">'+ICON.plus+'新建项目</button></div>'+
+        '<div class="empty-box" style="margin-top:40px;">还没有项目。请先新建客户，再新建项目。</div>';
+      $('#btnNewProject0').onclick=function(){ openCustomerForm(null); };
+      return;
+    }
+    if(!selectedProjectId||!projects.some(function(x){return x.id===selectedProjectId;})){
+      selectedProjectId=projects[0].id;
+    }
+    var p=C.find(store.projects,selectedProjectId);
+    var stages=C.sortedStages(store);
+    var curStage=C.currentStageIdOf(store,p);
+    var html='<div class="page-head"><h2>项目看板</h2><span class="crumb">'+esc(C.customerNameOf(store,p.customerId))+' / '+esc(p.name)+'</span><span class="spacer"></span></div>'+
+      '<div class="proj-switch">'+
+        projects.map(function(x){
+          var ps=C.projectStats(store,x.id,today);
+          return '<button class="ps-pill'+(x.id===selectedProjectId?' on':'')+'" data-proj-pick="'+esc(x.id)+'">'+
+            '<span class="ps-name">'+esc(x.name)+'</span>'+
+            '<span class="ps-meta">'+esc(C.stageName(store,C.currentStageIdOf(store,x)))+' · '+ps.done+'/'+ps.total+'</span></button>';
+        }).join('')+
+        '<button class="btn primary sm" id="btnNewProject2">'+ICON.plus+'新建项目</button>'+
+      '</div>'+
+      '<div class="kanban kanban-lg">';
+    stages.forEach(function(s,si){
+      var sst=C.stageStats(store,p.id,s.id,today);
+      var phase=C.stagePhase(sst);
+      var inst=C.stageInstance(p,s.id);
+      var km=inst?(inst.keyMilestone||''):'';
+      var isCur=curStage===s.id;
+      var ts=C.tasksOfProject(store,p.id).filter(function(t){return t.stageId===s.id;});
+      html+='<div class="kanban-col'+(isCur?' cur-col':'')+'">'+
+        '<div class="kcol-head"><span class="kcol-idx">'+(si+1)+'</span>'+
+          '<span class="kcol-name" title="'+esc(s.name)+'">'+esc(s.name)+'</span>'+
+          '<span class="kcol-cnt">'+sst.done+'/'+sst.total+'</span>'+
+          (isCur?'<span class="kcol-current" title="当前阶段"></span>':'')+
+          '<button class="kc-flag'+(p.currentStageId===s.id?' locked':'')+'" data-setcur="'+esc(s.id)+'" title="'+(p.currentStageId===s.id?'解除当前阶段锁定':'设为当前阶段（锁定）')+'">'+ICON.flag+'</button>'+
+        '</div>'+
+        '<div class="kcol-body stage-body">'+
+          '<div class="stage-card phase-'+phase+'">'+
+            '<div class="sc-badge"><span class="st phase-'+phase+'">'+esc(C.PHASE_LABEL[phase])+'</span></div>'+
+            '<div class="sc-km'+(km?'':' empty')+'" data-km="'+esc(s.id)+'" title="点击编辑关键节点">'+
+              (km?'◆ '+esc(km):'＋ 设置关键节点')+'</div>'+
+            (ts.length?ts.map(function(t){return miniTaskRow(t,today);}).join(''):'<div class="kcol-empty">该阶段暂无任务</div>')+
+            '<button class="add-card-btn" data-addtask="'+esc(s.id)+'">'+ICON.plus+'新建任务</button>'+
+          '</div>'+
+        '</div></div>';
+    });
+    html+='</div>';
+    main.innerHTML=html;
+    $('#btnNewProject2').onclick=function(){ openProjectForm(scope.customerId); };
+    /* 委托绑定（main 级） */
+  }
+
+  function miniTaskRow(t, today){
+    var od=C.isOverdue(t,today);
+    var m=C.find(store.members,t.assigneeId);
+    var tags=C.tagsOfTask(store,t);
+    return '<div class="mini-task" data-open="task:'+esc(t.id)+'">'+
+      '<div class="mt-line1"><span class="st '+esc(t.status)+'">'+esc(C.statusLabel(t.status))+'</span>'+
+        '<span class="mt-name">'+esc(t.name)+'</span></div>'+
+      '<div class="mt-line2">'+
+        (t.planDate?'<span class="mt-d'+(od?' od':'')+'">'+esc(t.planDate)+'</span>':'')+
+        (t.actualDate?'<span class="mt-d">'+esc(t.actualDate)+'</span>':'')+
+        (t.deliverable?'<span class="mt-deliv" title="'+esc(t.deliverable)+'">'+ICON.box+esc(t.deliverable)+'</span>':'')+
+        (od?'<span class="st overdue">逾期</span>':'')+
+        tags.slice(0,2).map(function(tg){return '<span class="tagchip" style="background:'+esc(tg.color)+'1f;color:'+esc(tg.color)+';">'+esc(tg.name)+'</span>';}).join('')+
+        (tags.length>2?'<span class="tagchip more">+'+(tags.length-2)+'</span>':'')+
+        (m?'<span class="avatar" title="'+esc(m.name)+'">'+esc(initials(m.name))+'</span>':'')+
+      '</div></div>';
+  }
+
+  /* ================================================================
+   * 任务看板：跟随项目（列头含关键节点）/ 全部项目
+   * ================================================================ */
+  function renderTaskBoard(main){
+    var projects=scopeProjects();
+    var today=C.todayStr();
+    if(!projects.length){
+      main.innerHTML='<div class="page-head"><h2>任务看板</h2></div><div class="empty-box" style="margin-top:40px;">还没有项目。</div>';
+      return;
+    }
+    var stages=C.sortedStages(store);
+    var curP=null;
+    if(!taskBoardAll){
+      curP=C.find(store.projects,selectedProjectId)||projects[0];
+    }
+    var tasks=curP?C.tasksOfProject(store,curP.id):scopeTasks();
+    var buckets={};
+    stages.forEach(function(s){ buckets[s.id]=[]; });
+    tasks.forEach(function(t){ (buckets[t.stageId]=buckets[t.stageId]||[]).push(t); });
+    var html='<div class="page-head"><h2>任务看板</h2><span class="crumb">'+esc(scopeLabel())+'</span><span class="spacer"></span>'+
+      '<span class="pill">'+stages.length+' 个阶段 · '+tasks.length+' 个任务</span></div>'+
+      '<div class="tb-toggle">'+
+        '<button class="'+(taskBoardAll?'':'on')+'" data-tb-toggle="0">'+(curP?'跟随项目：'+esc(curP.name):'跟随项目')+'</button>'+
+        '<button class="'+(taskBoardAll?'on':'')+'" data-tb-toggle="1">全部项目</button>'+
+      '</div><div class="kanban">';
+    stages.forEach(function(s,si){
+      var list=buckets[s.id]||[];
+      var km=curP?C.keyMilestoneOf(curP,s.id):'';
+      html+='<div class="kanban-col">'+
+        '<div class="kcol-head"><span class="kcol-idx">'+(si+1)+'</span>'+
+          '<span class="kcol-name" title="'+esc(s.name)+'">'+esc(s.name)+'</span>'+
+          '<span class="kcol-cnt">'+list.length+'</span></div>'+
+        (curP?'<div class="kcol-km" title="关键节点">'+(km?'◆ '+esc(km):'—')+'</div>':'')+
+        '<div class="kcol-body" data-drop="'+esc(s.id)+'">'+
+          (list.length?list.map(function(t){return cardTask(t,today);}).join(''):'<div class="kcol-empty">拖拽任务到此处</div>')+
+        '</div>'+
+        '<button class="add-card-btn" data-addtask="'+esc(s.id)+'">'+ICON.plus+'在「'+esc(s.name)+'」新建</button>'+
+      '</div>';
+    });
+    html+='</div>';
+    main.innerHTML=html;
+    bindDragDrop();
+  }
+
+  function cardTask(t,today){
+    var p=C.find(store.projects,t.projectId);
+    var assignee=C.find(store.members,t.assigneeId);
+    var od=C.isOverdue(t,today);
+    var tags=C.tagsOfTask(store,t);
+    var cms=C.commentsOfTask(store,t);
+    return '<div class="kcard task-card" draggable="true" data-type="task" data-id="'+esc(t.id)+'" data-open="edit-task:'+esc(t.id)+'" title="点击编辑任务与意见">'+
+      '<div class="kc-title"><span class="st '+esc(t.status)+'">'+esc(C.statusLabel(t.status))+'</span> '+esc(t.name)+'</div>'+
+      (taskBoardAll&&p?'<div class="kc-sub">'+esc(p.name)+'</div>':'')+
+      (tags.length?'<div class="kc-tags">'+tags.map(function(tg){return '<span class="tagchip" style="background:'+esc(tg.color)+'1f;color:'+esc(tg.color)+';">'+esc(tg.name)+'</span>';}).join('')+'</div>':'')+
+      '<div class="kc-meta">'+
+        (t.planDate?'<span class="m'+(od?' due-over':'')+'">'+ICON.calendar+'计划 '+esc(t.planDate)+'</span>':'')+
+        (t.actualDate?'<span class="m">实际 '+esc(t.actualDate)+'</span>':'')+
+        (od?'<span class="st overdue">逾期</span>':'')+
+        (cms.length?'<span class="m cm-cnt" title="意见 '+cms.length+' 条">'+ICON.chat+cms.length+' 条意见</span>':'')+
+      '</div>'+
+      (t.deliverable?'<div class="kc-meta"><span class="m" style="color:var(--primary);">'+ICON.box+esc(t.deliverable)+'</span></div>':'')+
+      '<div class="kc-foot">'+
+        (assignee?'<span class="avatar" title="责任人：'+esc(assignee.name)+'">'+esc(initials(assignee.name))+'</span>':'')+
+        '<button class="kc-more" data-open="edit-task:'+esc(t.id)+'">'+ICON.more+'</button>'+
+      '</div></div>';
+  }
+
+  /* ---------- 拖拽（任务卡） ---------- */
+  var dragData=null;
+  function bindDragDrop(){
+    $$('.kcard').forEach(function(card){
+      card.addEventListener('dragstart', function(e){
+        dragData={type:card.getAttribute('data-type'), id:card.getAttribute('data-id')};
+        card.classList.add('dragging');
+        try{ e.dataTransfer.setData('text/plain', dragData.id); e.dataTransfer.effectAllowed='move'; }catch(err){}
+      });
+      card.addEventListener('dragend', function(){
+        card.classList.remove('dragging');
+        $$('.drag-over').forEach(function(el){el.classList.remove('drag-over');});
+      });
+    });
+    $$('[data-drop]').forEach(function(drop){
+      drop.addEventListener('dragover', function(e){ e.preventDefault(); drop.classList.add('drag-over'); });
+      drop.addEventListener('dragleave', function(){ drop.classList.remove('drag-over'); });
+      drop.addEventListener('drop', function(e){
+        e.preventDefault(); drop.classList.remove('drag-over');
+        if(!dragData) return;
+        if(dragData.type==='task'){
+          var t=C.find(store.tasks,dragData.id);
+          if(t&&C.live(store.stages).some(function(s){return s.id===drop.getAttribute('data-drop');})){
+            t.stageId=drop.getAttribute('data-drop');
+            t.updatedAt=C.now();
+            save(); renderAll(); toast('任务阶段已更新','ok');
+          }
+        }
+      });
+    });
+  }/* ================================================================
+   * 项目详情：表头区 + 双视图（阶段卡片 / 推进明细表）
+   * ================================================================ */
+  var pdView='cards';  /* 'cards' | 'table' */
+  function openProjectDetail(projectId, forceView, focusStageId){
+    var p=C.find(store.projects,projectId); if(!p) return;
+    var c=C.find(store.customers,p.customerId);
+    var today=C.todayStr();
+    var st=C.projectStats(store,p.id,today);
+    var leader=C.find(store.members,p.leaderId);
+    var contact=C.find(store.members,p.ownerContactId);
+    var curStage=C.currentStageIdOf(store,p);
+    var locked=!!p.currentStageId;
+    if(forceView) pdView=forceView;
+    var stagebar=C.sortedStages(store).map(function(s,si){
+      var curOrd=C.stageOrderMap(store)[curStage]||0;
+      var cls=si<curOrd?'done':(si===curOrd?'cur':'');
+      var sst=C.stageStats(store,p.id,s.id,today);
+      return '<div class="sb '+cls+'" data-gostage="'+esc(s.id)+'" title="设为当前阶段（锁定）">'+
+        '<div class="sbn">'+esc(s.name)+'</div><div class="sbp">'+(sst.total?sst.done+'/'+sst.total:'—')+'</div></div>';
+    }).join('');
+    var html='<div class="modal-head"><h3>'+esc(p.name)+'</h3>'+
+      (st.risk?'<span class="st risk">风险 '+st.risk+'</span>':'')+
+      (st.overdue?'<span class="st overdue">逾期 '+st.overdue+'</span>':'')+
+      '<span class="st doing" title="当前阶段">'+esc(C.stageName(store,curStage)||'')+'</span>'+
+      (locked?'<button class="btn sm" id="pdUnlock" title="解除锁定后自动推导当前阶段">'+ICON.lock+'解除锁定</button>':'')+
+      '<div class="viewswitch">'+
+        '<button id="pdSwitchCards"'+(pdView==='cards'?' class="on"':'')+'>阶段卡片</button>'+
+        '<button id="pdSwitchTable"'+(pdView==='table'?' class="on"':'')+'>推进明细表</button>'+
+      '</div>'+
+      '<button class="btn sm" id="pdEdit">'+ICON.edit+'编辑</button>'+
+      '<button class="modal-x" data-close>'+ICON.x+'</button></div>'+
+      '<div class="modal-body">'+
+      '<div class="pd-crumb">'+esc(c?c.name:'')+' / '+esc(p.name)+'</div>'+
+      '<div class="pd-grid">'+
+        '<div><span class="k">承接单位：</span><span class="v">'+esc(p.undertaker||'—')+'</span></div>'+
+        '<div><span class="k">建设单位：</span><span class="v">'+esc(p.owner||'—')+'</span></div>'+
+        '<div><span class="k">建设单位联系人：</span><span class="v">'+esc(contact?contact.name:'—')+'</span></div>'+
+        '<div><span class="k">项目总负责人：</span><span class="v">'+esc(leader?leader.name:'—')+'</span></div>'+
+        '<div style="grid-column:1/-1;"><span class="k">项目组成员：</span><span class="v">'+
+          ((p.memberIds||[]).map(function(id){var m=C.find(store.members,id);return m?esc(m.name):'';}).filter(Boolean).join('、')||'—')+'</span></div>'+
+      '</div>'+
+      (p.overview?'<div class="pd-block-title">项目概况</div><div class="pd-block">'+esc(p.overview)+'</div>':'')+
+      '<div class="pd-block-title">8 阶段推进（点击阶段 = 设为当前阶段）</div>'+
+      '<div class="stagebar" id="pdStagebar">'+stagebar+'</div>'+
+      '<div id="pdBody"></div>'+
+      (p.remarks?'<div class="pd-block-title">补充说明（重点难点 · 需要支持 · 决策建议）</div><div class="pd-block remarks">'+esc(p.remarks)+'</div>':'')+
+      '</div>';
+    openModal(html,'lg');
+    $('#pdSwitchCards').onclick=function(){ pdView='cards'; openProjectDetail(projectId); };
+    $('#pdSwitchTable').onclick=function(){ pdView='table'; openProjectDetail(projectId); };
+    $('#pdEdit').onclick=function(){ openProjectEditForm(projectId); };
+    var unlock=$('#pdUnlock');
+    if(unlock){ unlock.onclick=function(){ p.currentStageId=null; p.updatedAt=C.now(); save(); openProjectDetail(projectId); renderMain(); toast('已解除锁定，恢复自动推导','ok'); }; }
+    $$('#pdStagebar [data-gostage]').forEach(function(el){
+      el.onclick=function(){
+        p.currentStageId=el.getAttribute('data-gostage');
+        p.updatedAt=C.now();
+        save(); openProjectDetail(projectId); renderMain();
+        toast('已设为当前阶段（锁定）','ok');
+      };
+    });
+    if(pdView==='table') renderDetailTable(projectId);
+    else renderDetailStageCards(projectId, focusStageId);
+  }
+
+  function detailTaskRow(t, today){
+    var m=C.find(store.members,t.assigneeId);
+    var od=C.isOverdue(t,today);
+    var tags=C.tagsOfTask(store,t);
+    return '<div class="task-row" data-open="edit-task:'+esc(t.id)+'">'+
+      '<span class="st '+esc(t.status)+'">'+esc(C.statusLabel(t.status))+'</span>'+
+      '<span class="tr-name">'+esc(t.name)+'</span>'+
+      '<span class="tr-dates">'+
+        (t.planDate?'<span'+(od?' class="od"':'')+'>计划 '+esc(t.planDate)+'</span>':'')+
+        (t.actualDate?'<span>实际 '+esc(t.actualDate)+'</span>':'')+
+      '</span>'+
+      (t.deliverable?'<span class="tr-deliv" title="'+esc(t.deliverable)+'">'+esc(t.deliverable)+'</span>':'')+
+      (tags.length?'<span class="tr-tags">'+tags.map(function(tg){return '<span class="tagchip" style="background:'+esc(tg.color)+'1f;color:'+esc(tg.color)+';">'+esc(tg.name)+'</span>';}).join('')+'</span>':'')+
+      (m?'<span class="avatar" title="'+esc(m.name)+'">'+esc(initials(m.name))+'</span>':'')+
+    '</div>';
+  }
+
+  function renderDetailStageCards(pid, focusStage){
+    var p=C.find(store.projects,pid);
+    var today=C.todayStr();
+    var stages=C.sortedStages(store);
+    var box=$('#pdBody'); if(!box) return;
+    var cur=C.currentStageIdOf(store,p);
+    var html=stages.map(function(s,si){
+      var sst=C.stageStats(store,pid,s.id,today);
+      var phase=C.stagePhase(sst);
+      var inst=C.stageInstance(p,s.id);
+      var km=inst?(inst.keyMilestone||''):'';
+      var isCur=cur===s.id;
+      var open=focusStage===s.id||isCur;
+      var ts=C.tasksOfProject(store,pid).filter(function(t){return t.stageId===s.id;});
+      return '<div class="stagefold'+(isCur?' cur':'')+(open?' open':'')+'" data-stagefold="'+esc(s.id)+'">'+
+        '<div class="sf-head" data-fold="'+esc(s.id)+'"><span class="idx">'+(si+1)+'</span>'+
+          '<span class="nm">'+esc(s.name)+'</span>'+
+          '<span class="st phase-'+phase+'">'+esc(C.PHASE_LABEL[phase])+'</span>'+
+          '<span class="cnt">'+sst.done+'/'+sst.total+'</span>'+
+          '<span class="arrow">'+ICON.down+'</span></div>'+
+        '<div class="sf-km'+(km?'':' empty')+'" data-km="'+esc(s.id)+'" title="点击编辑关键节点">'+
+          (km?'◆ '+esc(km):'＋ 设置关键节点')+'</div>'+
+        '<div class="sf-body">'+
+          (ts.length?ts.map(function(t){return detailTaskRow(t,today);}).join(''):'<div style="color:#b7c5d8;font-size:12px;padding:6px 2px 10px;">该阶段暂无任务</div>')+
+          '<button class="btn sm" data-addtask="'+esc(s.id)+'">'+ICON.plus+'在此阶段新建任务</button>'+
+        '</div></div>';
+    }).join('');
+    box.innerHTML=html;
+    $$('[data-fold]').forEach(function(h){
+      h.addEventListener('click', function(){
+        h.parentElement.classList.toggle('open');
+      });
+    });
+  }
+
+  function renderDetailTable(pid){
+    var p=C.find(store.projects,pid);
+    var today=C.todayStr();
+    var stages=C.sortedStages(store);
+    var box=$('#pdBody'); if(!box) return;
+    var html='<div class="detail-table-wrap"><table class="detail-table">'+
+      '<thead><tr><th style="width:82px;">阶段</th><th style="width:108px;">关键节点</th><th>任务</th>'+
+      '<th style="width:84px;">计划时间</th><th style="width:84px;">实际时间</th><th style="width:62px;">状态</th>'+
+      '<th style="width:110px;">交付物</th><th style="width:66px;">责任人</th></tr></thead><tbody>';
+    stages.forEach(function(s,si){
+      var km=C.keyMilestoneOf(p,s.id);
+      var ts=C.tasksOfProject(store,pid).filter(function(t){return t.stageId===s.id;});
+      var rows=ts.length?ts:[null];
+      rows.forEach(function(t,ri){
+        html+='<tr'+(t&&t.status==='done'?' class="rowdone"':'')+'>';
+        if(ri===0){
+          html+='<td class="stagecell" rowspan="'+rows.length+'"><span class="idx">'+(si+1)+'</span>'+esc(s.name)+'</td>'+
+            '<td class="kmcell" rowspan="'+rows.length+'">'+(km?esc(km):'<span class="km-empty">＋设置</span>')+'</td>';
+        }
+        if(t){
+          var m=C.find(store.members,t.assigneeId);
+          var od=C.isOverdue(t,today);
+          html+='<td>'+esc(t.name)+'</td>'+
+            '<td'+(od?' style="color:var(--red);font-weight:600;"':'')+'>'+esc(t.planDate||'')+'</td>'+
+            '<td>'+esc(t.actualDate||'')+'</td>'+
+            '<td><span class="st '+esc(t.status)+'">'+esc(C.statusLabel(t.status))+'</span>'+(od?'<br><span class="st overdue">逾期</span>':'')+'</td>'+
+            '<td>'+esc(t.deliverable||'')+'</td>'+
+            '<td>'+(m?esc(m.name):'')+'</td>';
+        } else {
+          html+='<td colspan="6" style="color:#b7c5d8;text-align:center;">—（该阶段暂无任务）—</td>';
+        }
+        html+='</tr>';
+      });
+    });
+    if(p.remarks){
+      html+='<tr><td class="stagecell" style="background:#fffaf0;"><span class="idx" style="color:#a06a00;">※</span>补充</td>'+
+        '<td class="footercell" colspan="7"><span class="ft">补充说明（重点难点、需要支持、决策建议等）</span>'+esc(p.remarks)+'</td></tr>';
+    }
+    html+='</tbody></table></div>'+
+    '<div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end;">'+
+      '<button class="btn sm" id="dtPrint">'+ICON.print+'打印明细表</button>'+
+      '<button class="btn sm" id="dtAddTask">'+ICON.plus+'新建任务</button></div>';
+    box.innerHTML=html;
+    $('#dtPrint').onclick=function(){ window.print(); };
+    $('#dtAddTask').onclick=function(){ openTaskForm(pid, C.currentStageIdOf(store,p)); };
+  }
+
+  /* ---------- 关键节点编辑 ---------- */
+  function openKmForm(projectId, stageId){
+    var p=C.find(store.projects,projectId); if(!p) return;
+    var s=C.find(store.stages,stageId);
+    var km=C.keyMilestoneOf(p,stageId);
+    openModal(
+      '<div class="modal-head"><h3>设置关键节点 · '+esc(s?s.name:'')+'</h3><button class="modal-x" data-close>'+ICON.x+'</button></div>'+
+      '<div class="modal-body"><div class="form-grid">'+
+        '<div class="fg full"><label>关键节点（阶段级）</label>'+
+        '<input id="fKm" value="'+esc(km)+'" placeholder="如：发布招标公告"></div>'+
+      '</div></div>'+
+      '<div class="modal-foot"><button class="btn" data-close>取消</button><button class="btn primary" id="kmSave">保存</button></div>','sm');
+    $('#kmSave').onclick=function(){
+      var r=C.setKeyMilestone(store,projectId,stageId,$('#fKm').value);
+      if(!r.ok){ toast(r.reason,'err'); return; }
+      save(); closeModal(); renderAll(); toast('关键节点已保存','ok');
+    };
+  }
+
+  /* ================================================================
+   * 任务表单（五字段 + 标签）
+   * ================================================================ */
+  function tagPickerHtml(selectedIds){
+    var tags=C.live(store.tags);
+    var sel=selectedIds||[];
+    return '<div class="tag-picker" id="tagPicker">'+
+      tags.map(function(tg){
+        var on=sel.indexOf(tg.id)>=0;
+        return '<button type="button" class="tp-chip'+(on?' on':'')+'" data-tag="'+esc(tg.id)+'" style="--tc:'+esc(tg.color)+'">'+esc(tg.name)+'</button>';
+      }).join('')+
+      '<span class="tp-new"><input id="tpNewName" placeholder="新增标签名"><button class="btn sm" id="tpAdd" type="button">＋</button></span>'+
+    '</div>';
+  }
+  function bindTagPicker(){
+    var picked=[];  /* 由调用方注入读取 */
+    return picked;
+  }
+  function openTaskForm(projectId, stageId){
+    var projects=scopeProjects();
+    var allProjects=C.live(store.projects);
+    if(!projectId){ projectId=selectedProjectId||(projects[0]&&projects[0].id)||(allProjects[0]&&allProjects[0].id); }
+    if(!projectId){ toast('请先创建项目','err'); return; }
+    var stages=C.sortedStages(store);
+    var members=C.live(store.members).filter(function(m){return m.kind==='internal';});
+    var picked=[];
+    openModal(
+      '<div class="modal-head"><h3>新建任务</h3><button class="modal-x" data-close>'+ICON.x+'</button></div>'+
+      '<div class="modal-body"><div class="form-grid">'+
+        '<div class="fg full"><label>任务名称 *</label><input id="fTName" placeholder="如：询价函编制"></div>'+
+        '<div class="fg"><label>所属项目 *</label><select id="fTProject">'+
+          allProjects.map(function(p){return '<option value="'+esc(p.id)+'"'+(p.id===projectId?' selected':'')+'>'+esc(p.name)+'</option>';}).join('')+
+        '</select></div>'+
+        '<div class="fg"><label>所属阶段 *</label><select id="fTStage">'+
+          stages.map(function(s){return '<option value="'+esc(s.id)+'"'+(s.id===stageId?' selected':'')+'>'+esc(s.name)+'</option>';}).join('')+
+        '</select></div>'+
+        '<div class="fg"><label>计划时间</label><input id="fTPlan" type="date"></div>'+
+        '<div class="fg"><label>实际时间</label><input id="fTActual" type="date"></div>'+
+        '<div class="fg"><label>责任人</label><select id="fTAssignee"><option value="">—</option>'+
+          members.map(function(m){return '<option value="'+esc(m.id)+'">'+esc(m.name)+'</option>';}).join('')+
+        '</select></div>'+
+        '<div class="fg"><label>状态</label><div class="seg" id="fTStatus">'+
+          '<button data-v="todo" class="on">未开始</button><button data-v="doing">进行中</button>'+
+          '<button data-v="done">完成</button><button data-v="risk" class="risk">有风险</button>'+
+        '</div></div>'+
+        '<div class="fg full"><label>交付物</label><input id="fTDeliv" placeholder="如：询价文件（可选）"></div>'+
+        '<div class="fg full"><label>标签（勾选预设或输入新增）</label>'+tagPickerHtml([])+'</div>'+
+      '</div></div>'+
+      '<div class="modal-foot"><button class="btn" data-close>取消</button><button class="btn primary" id="taskSave">创建任务</button></div>');
+    var status='todo';
+    $$('#fTStatus button').forEach(function(b){
+      b.onclick=function(){
+        $$('#fTStatus button').forEach(function(x){x.classList.remove('on');});
+        b.classList.add('on'); status=b.getAttribute('data-v');
+      };
+    });
+    bindTagChips();
+    $('#taskSave').onclick=function(){
+      var name=$('#fTName').value.trim();
+      var pid=$('#fTProject').value;
+      if(!name){ toast('请填写任务名称','err'); return; }
+      var t=C.stamp({id:C.uid('task'),projectId:pid,stageId:$('#fTStage').value,
+        name:name, planDate:$('#fTPlan').value||'', actualDate:$('#fTActual').value||'',
+        status:status, deliverable:$('#fTDeliv').value.trim(),
+        assigneeId:$('#fTAssignee').value||null, tagIds:collectTags()});
+      store.tasks.push(t);
+      save(); closeModal(); renderAll(); toast('任务已创建','ok');
+    };
+  }
+
+  /* 标签 chips 交互 */
+  function bindTagChips(){
+    $$('#tagPicker .tp-chip').forEach(function(ch){
+      ch.addEventListener('click', function(){ ch.classList.toggle('on'); });
+    });
+    var add=$('#tpAdd');
+    if(add){
+      add.addEventListener('click', function(){
+        var inp=$('#tpNewName'); if(!inp) return;
+        var name=inp.value.trim(); if(!name) return;
+        var tg=C.ensureTagByName(store,name);
+        if(tg){
+          var box=$('#tagPicker');
+          if(box){
+            var btn=document.createElement('button');
+            btn.type='button'; btn.className='tp-chip on';
+            btn.setAttribute('data-tag',tg.id);
+            btn.style.setProperty('--tc',tg.color);
+            btn.textContent=tg.name;
+            btn.addEventListener('click', function(){ btn.classList.toggle('on'); });
+            box.appendChild(btn);
+          }
+          inp.value='';
+          save();
+          toast('标签已加入并勾选','ok');
+        }
+      });
+    }
+  }
+  function collectTags(){
+    var ids=[];
+    $$('#tagPicker .tp-chip.on').forEach(function(ch){ ids.push(ch.getAttribute('data-tag')); });
+    return ids;
+  }
+  /* ================================================================
+   * 任务意见与讨论（每条意见标注提交人）
+   * ================================================================ */
+  function commentInnerHtml(t){
+    var cms=C.commentsOfTask(store,t);
+    var members=C.live(store.members);
+    var last='';
+    try{ last=localStorage.getItem('kb_last_author')||''; }catch(e){}
+    var listHtml=cms.length?cms.map(function(cm){
+      var m=cm.authorId?C.find(store.members,cm.authorId):null;
+      var dt=(cm.createdAt||'').replace('T',' ').slice(0,16);
+      return '<div class="cm-item" data-cmid="'+esc(cm.id)+'">'+
+        '<div class="cm-head">'+
+          (m?'<span class="avatar'+(m.kind==='external'?' external':'')+'" title="'+esc(m.name)+(m.org?' · '+esc(m.org):'')+'">'+esc(initials(m.name))+'</span>':'')+
+          '<span class="cm-author">'+esc(m?m.name:'匿名')+'</span>'+
+          '<span class="cm-time">'+esc(dt)+'</span>'+
+          '<button class="cm-del" data-cmdel="'+esc(cm.id)+'" title="删除该意见">'+ICON.x+'</button>'+
+        '</div>'+
+        '<div class="cm-text">'+esc(cm.text)+'</div>'+
+      '</div>';
+    }).join(''):'<div class="cm-empty">暂无意见 · 各成员可在下方提交</div>';
+    return '<div class="pd-block-title" style="margin-top:16px;">意见与讨论（'+cms.length+'）</div>'+
+      '<div class="cm-list">'+listHtml+'</div>'+
+      '<div class="cm-form">'+
+        '<select id="cmAuthor" title="选择提交人">'+
+          '<option value="">提交人…</option>'+
+          members.map(function(m){return '<option value="'+esc(m.id)+'"'+(m.id===last?' selected':'')+'>'+esc(m.name)+(m.kind==='external'?'（外部）':'')+'</option>';}).join('')+
+        '</select>'+
+        '<input id="cmText" placeholder="填写意见，如：建议提前确认厂商资质…（回车提交）">'+
+        '<button class="btn primary sm" id="cmSubmit">'+ICON.send+'提交</button>'+
+      '</div>';
+  }
+  function bindCommentSection(t){
+    var btn=$('#cmSubmit'); if(!btn) return;
+    function refresh(){
+      var box=$('#cmSection');
+      if(!box) return;
+      box.innerHTML=commentInnerHtml(t);
+      bindCommentSection(t);
+    }
+    btn.onclick=function(){
+      var aid=$('#cmAuthor').value||null;
+      var text=$('#cmText').value.trim();
+      if(!aid){ toast('请选择提交人','err'); return; }
+      if(!text){ toast('请填写意见内容','err'); return; }
+      var r=C.addComment(store,t.id,aid,text);
+      if(!r.ok){ toast(r.reason,'err'); return; }
+      try{ localStorage.setItem('kb_last_author',aid); }catch(e){}
+      save(); refresh(); renderMain();
+      toast('意见已提交（'+(C.find(store.members,aid)||{}).name+'）','ok');
+    };
+    var inp=$('#cmText');
+    if(inp){ inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); btn.click(); } }); }
+    $$('[data-cmdel]').forEach(function(el){
+      el.onclick=function(e){
+        e.stopPropagation();
+        C.removeComment(store,t.id,el.getAttribute('data-cmdel'));
+        save(); refresh(); renderMain();
+        toast('意见已删除','ok');
+      };
+    });
+  }
+
+  function openTaskEditForm(taskId){
+    var t=C.find(store.tasks,taskId); if(!t) return;
+    var p=C.find(store.projects,t.projectId);
+    var stages=C.sortedStages(store);
+    var members=C.live(store.members).filter(function(m){return m.kind==='internal';});
+    var picked=(t.tagIds||[]).slice();
+    openModal(
+      '<div class="modal-head"><h3>编辑任务</h3><button class="btn sm danger" id="taskDel">'+ICON.trash+'删除</button><button class="modal-x" data-close>'+ICON.x+'</button></div>'+
+      '<div class="modal-body">'+
+      (p?'<div style="font-size:12px;color:var(--text-2);margin-bottom:10px;">所属项目：'+esc(p.name)+'</div>':'')+
+      '<div class="form-grid">'+
+        '<div class="fg full"><label>任务名称 *</label><input id="fTName" value="'+esc(t.name)+'"></div>'+
+        '<div class="fg"><label>所属阶段 *</label><select id="fTStage">'+
+          stages.map(function(s){return '<option value="'+esc(s.id)+'"'+(s.id===t.stageId?' selected':'')+'>'+esc(s.name)+'</option>';}).join('')+
+        '</select></div>'+
+        '<div class="fg"><label>责任人</label><select id="fTAssignee"><option value="">—</option>'+
+          members.map(function(m){return '<option value="'+esc(m.id)+'"'+(t.assigneeId===m.id?' selected':'')+'>'+esc(m.name)+'</option>';}).join('')+
+        '</select></div>'+
+        '<div class="fg"><label>计划时间</label><input id="fTPlan" type="date" value="'+esc(t.planDate||'')+'"></div>'+
+        '<div class="fg"><label>实际时间</label><input id="fTActual" type="date" value="'+esc(t.actualDate||'')+'"></div>'+
+        '<div class="fg"><label>状态</label><div class="seg" id="fTStatus">'+
+          '<button data-v="todo"'+(t.status==='todo'?' class="on"':'')+'>未开始</button>'+
+          '<button data-v="doing"'+(t.status==='doing'?' class="on"':'')+'>进行中</button>'+
+          '<button data-v="done"'+(t.status==='done'?' class="on"':'')+'>完成</button>'+
+          '<button data-v="risk"'+(t.status==='risk'?' class="on"':'')+'>有风险</button>'+
+        '</div></div>'+
+        '<div class="fg full"><label>交付物</label><input id="fTDeliv" value="'+esc(t.deliverable||'')+'"></div>'+
+        '<div class="fg full"><label>标签（点击切换勾选）</label>'+tagPickerHtml(picked)+'</div>'+
+      '</div>'+
+      '<div id="cmSection">'+commentInnerHtml(t)+'</div>'+
+      '</div>'+
+      '<div class="modal-foot"><button class="btn" data-close>取消</button><button class="btn primary" id="taskSave">保存修改</button></div>');
+    var status=t.status;
+    $$('#fTStatus button').forEach(function(b){
+      b.onclick=function(){
+        $$('#fTStatus button').forEach(function(x){x.classList.remove('on');});
+        b.classList.add('on'); status=b.getAttribute('data-v');
+      };
+    });
+    bindTagChips();
+    bindCommentSection(t);
+    $('#taskSave').onclick=function(){
+      var name=$('#fTName').value.trim();
+      if(!name){ toast('请填写任务名称','err'); return; }
+      t.name=name; t.stageId=$('#fTStage').value;
+      t.planDate=$('#fTPlan').value||''; t.actualDate=$('#fTActual').value||'';
+      t.status=status; t.deliverable=$('#fTDeliv').value.trim();
+      t.assigneeId=$('#fTAssignee').value||null;
+      t.tagIds=collectTags();
+      t.updatedAt=C.now();
+      save(); closeModal(); renderAll(); toast('已保存修改','ok');
+    };
+    $('#taskDel').onclick=function(){
+      confirmBox('删除任务','确认删除任务「<b>'+esc(t.name)+'</b>」？',function(){
+        t.deletedAt=C.now(); t.updatedAt=C.now();
+        save(); closeModal(); renderAll(); toast('任务已删除','ok');
+      }, true);
+    };
+  }
+
+  /* ================================================================
+   * 项目表单（客户 + 表头全套字段）
+   * ================================================================ */
+  function openProjectForm(customerId){
+    var customers=C.live(store.customers);
+    if(!customers.length){ toast('请先创建客户','err'); openCustomerForm(null); return; }
+    var cid=customerId||scope.customerId||customers[0].id;
+    var internal=C.live(store.members).filter(function(m){return m.kind==='internal';});
+    var external=C.live(store.members).filter(function(m){return m.kind==='external';});
+    openModal(
+      '<div class="modal-head"><h3>新建项目</h3><button class="modal-x" data-close>'+ICON.x+'</button></div>'+
+      '<div class="modal-body"><div class="form-grid">'+
+        '<div class="fg full"><label>项目名称 *</label><input id="fPName" placeholder="如：重庆业务区扩容＋灾备项目"></div>'+
+        '<div class="fg full"><label>所属客户 *</label><select id="fPCustomer">'+
+          customers.map(function(c){return '<option value="'+esc(c.id)+'"'+(c.id===cid?' selected':'')+'>'+esc(c.name)+'</option>';}).join('')+
+        '</select></div>'+
+        '<div class="fg"><label>承接单位</label><input id="fPUndertaker" value="上海邮电设计院"></div>'+
+        '<div class="fg"><label>建设单位</label><input id="fPOwner" placeholder="甲方单位名"></div>'+
+        '<div class="fg"><label>建设单位联系人</label><select id="fPContact"><option value="">—</option>'+
+          external.map(function(m){return '<option value="'+esc(m.id)+'">'+esc(m.name)+'</option>';}).join('')+
+        '</select><button class="btn sm ghost" id="fPAddContact" style="margin-top:4px;align-self:flex-start;">＋ 新建联系人</button></div>'+
+        '<div class="fg"><label>项目总负责人</label><select id="fPLeader"><option value="">—</option>'+
+          internal.map(function(m){return '<option value="'+esc(m.id)+'">'+esc(m.name)+'</option>';}).join('')+
+        '</select></div>'+
+        '<div class="fg full"><label>项目组成员</label><select id="fPMembers" multiple size="4">'+
+          internal.map(function(m){return '<option value="'+esc(m.id)+'">'+esc(m.name)+'</option>';}).join('')+
+        '</select></div>'+
+        '<div class="fg full"><label>项目概况</label><textarea id="fPOverview" placeholder="项目背景、范围与目标"></textarea></div>'+
+        '<div class="fg full"><label>补充说明（重点难点 / 需要支持 / 决策建议）</label><textarea id="fPRemarks" placeholder="可分行填写"></textarea></div>'+
+      '</div></div>'+
+      '<div class="modal-foot"><button class="btn" data-close>取消</button><button class="btn primary" id="projSave">创建项目</button></div>', 'lg');
+    $('#fPAddContact').onclick=function(){
+      var nm=prompt('新建建设单位联系人姓名：');
+      if(!nm||!nm.trim()) return;
+      var org=prompt('所属单位（可选）：')||'';
+      var m=C.stamp({id:C.uid('mem'),name:nm.trim(),kind:'external',org:org.trim(),note:''});
+      store.members.push(m); save();
+      var sel=$('#fPContact');
+      sel.innerHTML='<option value="">—</option>'+C.live(store.members).filter(function(x){return x.kind==='external';}).map(function(x){return '<option value="'+esc(x.id)+'"'+(x.id===m.id?' selected':'')+'>'+esc(x.name)+'</option>';}).join('');
+      toast('联系人已创建','ok');
+    };
+    $('#projSave').onclick=function(){
+      var name=$('#fPName').value.trim();
+      var cid2=$('#fPCustomer').value;
+      if(!name){ toast('请填写项目名称','err'); return; }
+      if(!C.uniqueName(C.live(store.projects).filter(function(x){return x.customerId===cid2;}), name)){ toast('该客户下项目名已存在','err'); return; }
+      var p=C.stamp({id:C.uid('proj'),customerId:cid2,name:name,
+        undertaker:$('#fPUndertaker').value.trim(), owner:$('#fPOwner').value.trim(),
+        ownerContactId:$('#fPContact').value||null,
+        leaderId:$('#fPLeader').value||null,
+        memberIds:Array.from($('#fPMembers').selectedOptions||[]).map(function(o){return o.value;}),
+        overview:$('#fPOverview').value.trim(), remarks:$('#fPRemarks').value.trim()});
+      store.projects.push(p);
+      C.ensureStageInstances(store,p);
+      selectedProjectId=p.id;
+      save(); renderAll(); closeModal(); toast('项目已创建（自动生成 8 阶段）','ok');
+    };
+  }
+  function openProjectEditForm(projectId){
+    var p=C.find(store.projects,projectId); if(!p) return;
+    var customers=C.live(store.customers);
+    var internal=C.live(store.members).filter(function(m){return m.kind==='internal';});
+    var external=C.live(store.members).filter(function(m){return m.kind==='external';});
+    openModal(
+      '<div class="modal-head"><h3>编辑项目</h3><button class="btn sm danger" id="projDel">'+ICON.trash+'删除</button><button class="modal-x" data-close>'+ICON.x+'</button></div>'+
+      '<div class="modal-body"><div class="form-grid">'+
+        '<div class="fg full"><label>项目名称 *</label><input id="fPName" value="'+esc(p.name)+'"></div>'+
+        '<div class="fg full"><label>所属客户</label><select id="fPCustomer">'+
+          customers.map(function(c){return '<option value="'+esc(c.id)+'"'+(p.customerId===c.id?' selected':'')+'>'+esc(c.name)+'</option>';}).join('')+
+        '</select></div>'+
+        '<div class="fg"><label>承接单位</label><input id="fPUndertaker" value="'+esc(p.undertaker||'')+'"></div>'+
+        '<div class="fg"><label>建设单位</label><input id="fPOwner" value="'+esc(p.owner||'')+'"></div>'+
+        '<div class="fg"><label>建设单位联系人</label><select id="fPContact"><option value="">—</option>'+
+          external.map(function(m){return '<option value="'+esc(m.id)+'"'+(p.ownerContactId===m.id?' selected':'')+'>'+esc(m.name)+'</option>';}).join('')+
+        '</select></div>'+
+        '<div class="fg"><label>项目总负责人</label><select id="fPLeader"><option value="">—</option>'+
+          internal.map(function(m){return '<option value="'+esc(m.id)+'"'+(p.leaderId===m.id?' selected':'')+'>'+esc(m.name)+'</option>';}).join('')+
+        '</select></div>'+
+        '<div class="fg full"><label>项目组成员</label><select id="fPMembers" multiple size="4">'+
+          internal.map(function(m){return '<option value="'+esc(m.id)+'"'+((p.memberIds||[]).indexOf(m.id)>=0?' selected':'')+'>'+esc(m.name)+'</option>';}).join('')+
+        '</select></div>'+
+        '<div class="fg full"><label>项目概况</label><textarea id="fPOverview">'+esc(p.overview||'')+'</textarea></div>'+
+        '<div class="fg full"><label>补充说明（重点难点 / 需要支持 / 决策建议）</label><textarea id="fPRemarks">'+esc(p.remarks||'')+'</textarea></div>'+
+      '</div></div>'+
+      '<div class="modal-foot"><button class="btn" data-close>取消</button><button class="btn primary" id="projSave">保存修改</button></div>', 'lg');
+    $('#projSave').onclick=function(){
+      var name=$('#fPName').value.trim();
+      if(!name){ toast('请填写项目名称','err'); return; }
+      p.name=name; p.customerId=$('#fPCustomer').value;
+      p.undertaker=$('#fPUndertaker').value.trim(); p.owner=$('#fPOwner').value.trim();
+      p.ownerContactId=$('#fPContact').value||null;
+      p.leaderId=$('#fPLeader').value||null;
+      p.memberIds=Array.from($('#fPMembers').selectedOptions||[]).map(function(o){return o.value;});
+      p.overview=$('#fPOverview').value.trim(); p.remarks=$('#fPRemarks').value.trim();
+      p.updatedAt=C.now();
+      save(); renderAll(); closeModal(); toast('已保存修改','ok');
+    };
+    $('#projDel').onclick=function(){
+      confirmBox('删除项目','将级联删除该项目全部阶段与任务。确认删除 <b>'+esc(p.name)+'</b>？',function(){
+        C.removeProject(store,p.id); if(selectedProjectId===p.id) selectedProjectId=null;
+        save(); renderAll(); closeModal(); toast('项目已删除','ok');
+      }, true);
+    };
+  }
+
+  /* ================================================================
+   * 客户 / 成员表单
+   * ================================================================ */
+  function openCustomerForm(id){
+    var c=id?C.find(store.customers,id):null;
+    openModal(
+      '<div class="modal-head"><h3>'+(c?'编辑客户':'新建客户')+'</h3><button class="modal-x" data-close>'+ICON.x+'</button></div>'+
+      '<div class="modal-body"><div class="form-grid">'+
+        '<div class="fg full"><label>客户名称 *</label><input id="fCustName" value="'+esc(c?c.name:'')+'"></div>'+
+        '<div class="fg full"><label>简介</label><input id="fCustDesc" value="'+esc(c?c.description||'':'')+'"></div>'+
+      '</div></div>'+
+      '<div class="modal-foot"><button class="btn" data-close>取消</button><button class="btn primary" id="custSave">保存</button></div>','sm');
+    $('#custSave').onclick=function(){
+      var name=$('#fCustName').value.trim();
+      if(!name){ toast('请填写客户名称','err'); return; }
+      if(!C.uniqueName(store.customers,name,c?c.id:null)){ toast('客户名称已存在','err'); return; }
+      if(c){ c.name=name; c.description=$('#fCustDesc').value.trim(); c.updatedAt=C.now(); }
+      else{ store.customers.push(C.stamp({id:C.uid('cust'),name:name,description:$('#fCustDesc').value.trim()})); }
+      save(); renderAll(); closeModal(); toast('已保存','ok');
+    };
+  }
+
+  /* ================================================================
+   * 成员页 + 成员详情联动（参与项目 / 名下任务 / 就地编辑）
+   * ================================================================ */
+  function renderMembers(main){
+    var members=C.live(store.members);
+    var html='<div class="page-head"><h2>成员</h2><span class="crumb">人员库 · 点击成员查看其项目与任务</span><span class="spacer"></span>'+
+      '<button class="btn primary" id="btnNewMember">'+ICON.plus+'新建成员</button></div><div class="member-grid">';
+    members.forEach(function(m){
+      var projs=C.projectsOfMember(store,m.id);
+      var tasks=C.tasksOfAssignee(store,m.id);
+      html+='<div class="member-card" data-mid="'+esc(m.id)+'">'+
+        '<div class="mc-head"><span class="avatar'+(m.kind==='external'?' external':'')+'">'+esc(initials(m.name))+'</span>'+
+        '<span class="mc-name">'+esc(m.name)+'</span><span class="mc-kind '+(m.kind==='internal'?'i':'e')+'">'+(m.kind==='internal'?'我方':'外部')+'</span></div>'+
+        (m.org?'<div class="mc-org">'+esc(m.org)+'</div>':'')+
+        '<div class="mc-proj">参与项目 '+projs.length+' 个 · 负责任务 '+tasks.length+' 项</div>'+
+      '</div>';
+    });
+    html+='</div>';
+    main.innerHTML=html;
+    $('#btnNewMember').onclick=openMemberForm;
+    $$('.member-card').forEach(function(card){
+      card.addEventListener('click', function(){ openMemberDetail(card.getAttribute('data-mid')); });
+    });
+  }
+  function openMemberDetail(memberId){
+    var m=C.find(store.members,memberId); if(!m) return;
+    var projs=C.projectsOfMember(store,m.id);
+    var tasks=C.tasksOfAssignee(store,m.id);
+    var today=C.todayStr();
+    var byProj={};
+    tasks.forEach(function(t){ (byProj[t.projectId]=byProj[t.projectId]||[]).push(t); });
+    var html='<div class="modal-head"><h3>'+esc(m.name)+'</h3>'+
+      '<span class="mc-kind '+(m.kind==='internal'?'i':'e')+'">'+(m.kind==='internal'?'我方':'外部')+'</span>'+
+      '<span class="pill">参与 '+projs.length+' 项目 · 负责 '+tasks.length+' 任务</span>'+
+      '<button class="modal-x" data-close>'+ICON.x+'</button></div>'+
+      '<div class="modal-body">'+
+      '<div class="pd-block-title">参与项目（'+projs.length+'）</div>'+
+      (projs.length?projs.map(function(p){
+        var st=C.projectStats(store,p.id,today);
+        var role=C.roleInProject(p,m.id);
+        return '<div class="rel-item" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:9px;margin-bottom:7px;background:#fbfcfe;">'+
+          '<span class="rname" style="flex:1;font-weight:600;cursor:pointer;color:var(--primary-deep);" data-open="goproject:'+esc(p.id)+'">'+esc(p.name)+'</span>'+
+          (role?'<span class="tagchip role">'+esc(role)+'</span>':'')+
+          '<span style="font-size:11px;color:var(--text-2);">'+st.done+'/'+st.total+' 任务</span>'+
+          '<span style="font-size:11px;color:var(--text-2);">'+esc(C.stageName(store,C.currentStageIdOf(store,p)))+'</span></div>';
+      }).join(''):'<div style="color:#b7c5d8;">暂未参与项目</div>')+
+      '<div class="pd-block-title">名下任务（'+tasks.length+' · 点击状态徽章可循环切换）</div>'+
+      (tasks.length?Object.keys(byProj).map(function(pid){
+        var p=C.find(store.projects,pid);
+        var list=byProj[pid];
+        return '<div class="mt-group"><div class="mt-group-head">'+esc(p?p.name:'未知项目')+' <span style="font-weight:400;color:var(--text-2);font-size:11px;">('+list.length+')</span></div>'+
+          list.map(function(t){
+            var od=C.isOverdue(t,today);
+            var tags=C.tagsOfTask(store,t);
+            return '<div class="task-row">'+
+              '<span class="st '+esc(t.status)+'" data-cycle="'+esc(t.id)+'" style="cursor:pointer" title="点击切换状态">'+esc(C.statusLabel(t.status))+'</span>'+
+              '<span class="tr-name">'+esc(t.name)+'</span>'+
+              '<span class="tr-dates">'+(t.planDate?'<span'+(od?' class="od"':'')+'>'+esc(t.planDate)+'</span>':'')+'</span>'+
+              (tags.length?'<span class="tr-tags">'+tags.slice(0,2).map(function(tg){return '<span class="tagchip" style="background:'+esc(tg.color)+'1f;color:'+esc(tg.color)+';">'+esc(tg.name)+'</span>';}).join('')+(tags.length>2?'<span class="tagchip more">+'+(tags.length-2)+'</span>':'')+'</span>':'')+
+              '<button class="kc-more" data-open="task:'+esc(t.id)+'" title="编辑任务">'+ICON.edit+'</button>'+
+            '</div>';
+          }).join('')+'</div>';
+      }).join(''):'<div style="color:#b7c5d8;">暂无负责任务</div>')+
+      '</div>';
+    openModal(html,'lg');
+    bindCardOpen();
+  }
+  var STATUS_CYCLE=['todo','doing','done','risk'];
+  function openMemberForm(){
+    openModal(
+      '<div class="modal-head"><h3>新建成员</h3><button class="modal-x" data-close>'+ICON.x+'</button></div>'+
+      '<div class="modal-body"><div class="form-grid">'+
+        '<div class="fg"><label>姓名 *</label><input id="fMName"></div>'+
+        '<div class="fg"><label>类型</label><select id="fMKind"><option value="internal">我方成员</option><option value="external">外部（建设单位联系人等）</option></select></div>'+
+        '<div class="fg full"><label>所属组织</label><input id="fMOrg" placeholder="如：上海邮电设计院"></div>'+
+      '</div></div>'+
+      '<div class="modal-foot"><button class="btn" data-close>取消</button><button class="btn primary" id="memSave">保存</button></div>','sm');
+    $('#memSave').onclick=function(){
+      var name=$('#fMName').value.trim(); if(!name){ toast('请填写姓名','err'); return; }
+      store.members.push(C.stamp({id:C.uid('mem'),name:name,kind:$('#fMKind').value,org:$('#fMOrg').value.trim(),note:''}));
+      save(); renderAll(); closeModal(); toast('成员已创建','ok');
+    };
+  }  /* ================================================================
+   * 设置页（数据导出导入 · 阶段名库 · 标签库）
+   * ================================================================ */
+  function renderSettings(main){
+    var stages=C.sortedStages(store);
+    var tags=C.live(store.tags);
+    var projs=C.live(store.projects);
+    var tasks=C.live(store.tasks);
+    var html='<div class="page-head"><h2>设置</h2><span class="crumb">数据导出导入 · 阶段名库 · 标签库</span><span class="spacer"></span>'+
+      '<span class="pill">'+projs.length+' 项目 · '+tasks.length+' 任务</span></div>';
+    /* ===== 数据导出（置顶） ===== */
+    html+='<div class="settings-group dm-hero"><div class="sg-head">'+ICON.download+'数据导出（分发给成员线下整理）</div><div class="sg-body">'+
+      '<div class="dm-grid">'+
+        '<button class="dm-btn primary" id="btnExpJson"><span class="dm-ic">'+ICON.download+'</span><span class="dm-tx"><span class="dm-t">JSON 完整备份</span><span class="dm-d">全部数据一键备份，含意见与标签</span></span></button>'+
+        '<button class="dm-btn primary" id="btnExpPick"><span class="dm-ic">'+ICON.download+'</span><span class="dm-tx"><span class="dm-t">按项目筛选导出</span><span class="dm-d">导出部分项目给对应成员整理（推荐）</span></span></button>'+
+        '<button class="dm-btn" id="btnExpTaskCsv"><span class="dm-ic">'+ICON.list+'</span><span class="dm-tx"><span class="dm-t">任务表格 CSV</span><span class="dm-d">项目/阶段/时间/状态/标签/意见</span></span></button>'+
+        '<button class="dm-btn" id="btnExpProjCsv"><span class="dm-ic">'+ICON.box+'</span><span class="dm-tx"><span class="dm-t">项目表格 CSV</span><span class="dm-d">项目表头字段一览</span></span></button>'+
+        '<button class="dm-btn" id="btnExpStageCsv"><span class="dm-ic">'+ICON.flag+'</span><span class="dm-tx"><span class="dm-t">阶段表格 CSV</span><span class="dm-d">各项目阶段关键节点</span></span></button>'+
+      '</div>'+
+      '<div class="hint-line">CSV 表格可用 Excel / WPS 直接打开编辑；多人协作建议用「按项目筛选导出」分发，成员整理后收回导入。</div>'+
+      '</div></div>';
+    /* ===== 数据导入（置顶） ===== */
+    html+='<div class="settings-group dm-hero"><div class="sg-head">'+ICON.upload+'数据导入（按项目整体合并更新）</div><div class="sg-body">'+
+      '<div class="dm-grid">'+
+        '<button class="dm-btn primary" id="btnImpJson"><span class="dm-ic">'+ICON.upload+'</span><span class="dm-tx"><span class="dm-t">导入 JSON</span><span class="dm-d">完整数据合并，含任务意见</span></span></button>'+
+        '<button class="dm-btn" id="btnImpTaskCsv"><span class="dm-ic">'+ICON.list+'</span><span class="dm-tx"><span class="dm-t">导入任务表格 CSV</span><span class="dm-d">整体替换涉及项目的任务</span></span></button>'+
+        '<button class="dm-btn" id="btnImpProjCsv"><span class="dm-ic">'+ICON.box+'</span><span class="dm-tx"><span class="dm-t">导入项目表格 CSV</span><span class="dm-d">更新项目表头字段</span></span></button>'+
+        '<button class="dm-btn" id="btnImpStageCsv"><span class="dm-ic">'+ICON.flag+'</span><span class="dm-tx"><span class="dm-t">导入阶段表格 CSV</span><span class="dm-d">更新各阶段关键节点</span></span></button>'+
+      '</div>'+
+      '<div class="hint-line">合并规则：导入文件中出现的项目<b>整体以导入文件为准</b>（项目字段 + 8 阶段关键节点 + 全部任务 + 标签 + 意见）；未涉及的项目保持不动；导入后输出合并报告。</div>'+
+      '</div></div>';
+    /* ===== 阶段名库 ===== */
+    html+='<div class="settings-group"><div class="sg-head">'+ICON.list+'全局阶段名库（可增不可减 · 每项目自动 8 实例）</div><div class="sg-body">';
+    stages.forEach(function(s,i){
+      html+='<div class="stagecfg-row" data-stage="'+esc(s.id)+'">'+
+        '<span class="seq">'+(i+1)+'</span>'+
+        '<input type="text" value="'+esc(s.name)+'" data-stagename="'+esc(s.id)+'">'+
+        '<span class="row-ops"><button disabled title="阶段不可删除">'+ICON.trash+'</button></span>'+
+      '</div>';
+    });
+    html+='<div style="display:flex;gap:8px;align-items:center;margin-top:10px;">'+
+      '<input id="newStageName" placeholder="新阶段名称" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;flex:1;outline:none;">'+
+      '<button class="btn sm primary" id="btnAddStage">'+ICON.plus+'新增阶段</button></div>'+
+      '<div class="hint-line">规则：新增阶段名 → 所有项目自动同步补一个空阶段实例；改名 → 全项目联动；不可删除。</div>'+
+      '</div></div>';
+    /* ===== 标签库 ===== */
+    html+='<div class="settings-group"><div class="sg-head">'+ICON.flag+'任务标签库（预设 + 自定义）</div><div class="sg-body">';
+    tags.forEach(function(tg){
+      html+='<div class="tagcfg-row">'+
+        '<span class="tcolor" style="background:'+esc(tg.color)+'"></span>'+
+        '<input type="text" value="'+esc(tg.name)+'" data-tagname="'+esc(tg.id)+'">'+
+        '<span class="tagbuiltin">'+(tg.builtin?'预设':'自定义')+'</span>'+
+        '<span class="row-ops"><button data-tagdel="'+esc(tg.id)+'" title="删除标签">'+ICON.trash+'</button></span>'+
+      '</div>';
+    });
+    html+='<div style="display:flex;gap:8px;align-items:center;margin-top:10px;">'+
+      '<input id="newTagName" placeholder="新标签名称" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;flex:1;outline:none;">'+
+      '<button class="btn sm primary" id="btnAddTag">'+ICON.plus+'新增标签</button></div>'+
+      '<div class="hint-line">任务编辑时可一键勾选预设标签，也可输入新标签名自动入库；删除标签会同步解除所有任务上的引用。</div>'+
+      '</div></div>';
+    /* ===== 数据维护 ===== */
+    html+='<div class="settings-group"><div class="sg-head">'+ICON.gear+'数据维护</div><div class="sg-body">'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+        '<button class="btn" id="btnDemo">载入五大项目示例</button>'+
+        '<button class="btn danger" id="btnClear">清空全部数据</button>'+
+      '</div>'+
+      '<div class="hint-line">载入示例会替换当前全部数据；清空将删除所有客户/项目/任务，均不可恢复，请先导出备份。</div>'+
+      '</div></div>';
+    main.innerHTML=html;
+
+    $$('[data-stagename]').forEach(function(inp){
+      inp.addEventListener('change', function(){
+        var r=C.renameStage(store, inp.getAttribute('data-stagename'), inp.value);
+        if(!r.ok){ toast(r.reason,'err'); renderSettings($('#main')); return; }
+        save(); renderAll(); toast('阶段已改名（全项目同步）','ok');
+      });
+    });
+    $$('[data-tagname]').forEach(function(inp){
+      inp.addEventListener('change', function(){
+        var r=C.renameTag(store, inp.getAttribute('data-tagname'), inp.value);
+        if(!r.ok){ toast(r.reason,'err'); renderSettings($('#main')); return; }
+        save(); renderAll(); toast('标签已改名','ok');
+      });
+    });
+    $('#btnAddStage').onclick=function(){
+      var name=$('#newStageName').value.trim();
+      var r=C.addStage(store,name);
+      if(!r.ok){ toast(r.reason,'err'); return; }
+      save(); renderAll(); toast('阶段已新增（所有项目自动补实例）','ok');
+    };
+    $('#btnAddTag').onclick=function(){
+      var name=$('#newTagName').value.trim();
+      if(!name){ toast('请填写标签名称','err'); return; }
+      C.ensureTagByName(store,name);
+      save(); renderAll(); toast('标签已新增','ok');
+    };
+    $('#btnExpJson').onclick=exportJsonFile;
+    $('#btnExpPick').onclick=openExportPicker;
+    $('#btnExpProjCsv').onclick=exportProjectsCsvFile;
+    $('#btnExpStageCsv').onclick=exportStagesCsvFile;
+    $('#btnExpTaskCsv').onclick=exportTasksCsvFile;
+    $('#btnImpJson').onclick=importJsonFile;
+    $('#btnImpProjCsv').onclick=importProjectsCsvFile;
+    $('#btnImpStageCsv').onclick=importStagesCsvFile;
+    $('#btnImpTaskCsv').onclick=importTasksCsvFile;
+    $('#btnDemo').onclick=function(){
+      confirmBox('载入示例数据','将用五大项目示例数据<b>替换当前全部数据</b>，原数据丢失（请先导出备份）。确认继续？',function(){ resetDemo(); },true);
+    };
+    $('#btnClear').onclick=function(){
+      confirmBox('清空数据','将删除<b>全部</b>客户/项目/任务数据，不可恢复。建议先导出备份。确认清空？',function(){
+        store=C.freshStore(); save(); renderAll(); toast('已清空');
+      },true);
+    };
+  }
+
+  /* ================================================================
+   * 导出导入
+   * ================================================================ */
+  function downloadFile(name, content, mime){
+    var blob=new Blob([content],{type:mime||'application/octet-stream'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download=name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },200);
+  }
+  function exportJsonFile(){
+    downloadFile('项目看板_完整备份_'+C.todayStr()+'.json', C.exportJson(store), 'application/json');
+    toast('已导出 JSON 完整备份','ok');
+  }
+  function exportProjectsCsvFile(){
+    downloadFile('项目清单_'+C.todayStr()+'.csv', '\ufeff'+C.exportProjectsCsv(store), 'text/csv;charset=utf-8');
+    toast('已导出项目 CSV','ok');
+  }
+  function exportStagesCsvFile(){
+    downloadFile('阶段关键节点_'+C.todayStr()+'.csv', '\ufeff'+C.exportStagesCsv(store), 'text/csv;charset=utf-8');
+    toast('已导出阶段 CSV（关键节点）','ok');
+  }
+  function exportTasksCsvFile(){
+    downloadFile('任务清单_'+C.todayStr()+'.csv', '\ufeff'+C.exportTasksCsv(store), 'text/csv;charset=utf-8');
+    toast('已导出任务 CSV（含标签列）','ok');
+  }
+  function openExportPicker(){
+    var projects=C.live(store.projects);
+    if(!projects.length){ toast('暂无项目可导出','err'); return; }
+    var members=C.live(store.members);
+    openModal(
+      '<div class="modal-head"><h3>按项目筛选导出 JSON</h3><button class="modal-x" data-close>'+ICON.x+'</button></div>'+
+      '<div class="modal-body">'+
+      '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">'+
+        '<select id="epMember" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;outline:none;">'+
+          '<option value="">按成员快捷筛选…</option>'+
+          members.map(function(m){return '<option value="'+esc(m.id)+'">'+esc(m.name)+'</option>';}).join('')+
+        '</select>'+
+        '<button class="btn sm" id="epApply">勾选其参与项目</button>'+
+        '<button class="btn sm" id="epAll">全选</button>'+
+        '<button class="btn sm" id="epNone">清空</button>'+
+      '</div>'+
+      '<div class="ep-list">'+
+        projects.map(function(p){
+          var ps=C.projectStats(store,p.id,C.todayStr());
+          return '<label class="ep-row"><input type="checkbox" value="'+esc(p.id)+'" checked>'+
+            '<span class="ep-name">'+esc(p.name)+'</span>'+
+            '<span class="ep-meta">'+esc(C.customerNameOf(store,p.customerId))+' · '+esc(C.stageName(store,C.currentStageIdOf(store,p)))+' · '+ps.done+'/'+ps.total+'</span></label>';
+        }).join('')+
+      '</div>'+
+      '<div style="color:var(--text-2);font-size:12px;margin-top:8px;">导出的文件只含所选项目及其任务/标签，可直接分发给对应成员线下整理。</div>'+
+      '</div>'+
+      '<div class="modal-foot"><button class="btn" data-close>取消</button><button class="btn primary" id="epExport">'+ICON.download+'导出所选</button></div>','lg');
+    $('#epAll').onclick=function(){ $$('.ep-list input').forEach(function(i){i.checked=true;}); };
+    $('#epNone').onclick=function(){ $$('.ep-list input').forEach(function(i){i.checked=false;}); };
+    $('#epApply').onclick=function(){
+      var mid=$('#epMember').value; if(!mid){ toast('请先选择成员','err'); return; }
+      var pidSet=new Set(C.projectsOfMember(store,mid).map(function(p){return p.id;}));
+      $$('.ep-list input').forEach(function(c){ c.checked=pidSet.has(c.value); });
+      toast('已勾选该成员参与的项目','ok');
+    };
+    $('#epExport').onclick=function(){
+      var ids=$$('.ep-list input:checked').map(function(c){return c.value;});
+      if(!ids.length){ toast('请至少勾选一个项目','err'); return; }
+      downloadFile('看板_按项目导出_'+C.todayStr()+'.json', C.exportJson(store,ids), 'application/json');
+      closeModal(); toast('已导出 '+ids.length+' 个项目','ok');
+    };
+  }
+  function pickFile(accept, onText){
+    var inp=document.createElement('input'); inp.type='file'; inp.accept=accept;
+    inp.onchange=function(){
+      var file=inp.files[0]; if(!file) return;
+      var reader=new FileReader();
+      reader.onload=function(){ onText(String(reader.result)); };
+      reader.readAsText(file,'utf-8');
+    };
+    inp.click();
+  }
+  function importJsonFile(){
+    pickFile('.json,application/json', function(text){
+      var res=C.importJson(store, text);
+      if(!res.ok){ toast(res.reason,'err'); return; }
+      var s=res.stats;
+      save(); renderAll();
+      openModal(
+        '<div class="modal-head"><h3>导入完成（按项目整体合并）</h3><button class="modal-x" data-close>'+ICON.x+'</button></div>'+
+        '<div class="modal-body import-report">'+
+          '<div class="ir-line"><span class="ir-num upd">'+s.updated+'</span>更新项目：'+(s.projectsUpdated.slice(0,4).join('、')||'—')+(s.projectsUpdated.length>4?' 等':'')+'</div>'+
+          '<div class="ir-line"><span class="ir-num add">+'+s.added+'</span>新增项目：'+(s.projectsAdded.slice(0,4).join('、')||'—')+(s.projectsAdded.length>4?' 等':'')+'</div>'+
+          '<div class="ir-line"><span class="ir-num keep">＝'+s.kept+'</span>未涉及保留（不覆盖）</div>'+
+          '<div class="ir-line"><span class="ir-num orphan">⚠'+s.orphans+'</span>异常（引用断裂，请检查）</div>'+
+        '</div>'+
+        '<div class="modal-foot"><button class="btn primary" data-close>完成</button></div>','sm');
+    });
+  }
+  function importProjectsCsvFile(){
+    pickFile('.csv,text/csv', function(text){
+      var rows=C.parseCsv(text.replace(/^\uFEFF/,''));
+      if(rows.length<2){ toast('CSV 内容为空','err'); return; }
+      var res=C.importProjectsCsv(store, rows);
+      save(); renderAll();
+      toast('项目导入完成：新增 '+res.added+'，更新 '+res.updated,'ok');
+    });
+  }
+  function importStagesCsvFile(){
+    pickFile('.csv,text/csv', function(text){
+      var rows=C.parseCsv(text.replace(/^\uFEFF/,''));
+      if(rows.length<2){ toast('CSV 内容为空','err'); return; }
+      var res=C.importStagesCsv(store, rows);
+      save(); renderAll();
+      toast('阶段关键节点导入完成：更新 '+res.updated+' 处','ok');
+    });
+  }
+  function importTasksCsvFile(){
+    pickFile('.csv,text/csv', function(text){
+      var rows=C.parseCsv(text.replace(/^\uFEFF/,''));
+      if(rows.length<2){ toast('CSV 内容为空','err'); return; }
+      var res=C.importTasksCsv(store, rows);
+      save(); renderAll();
+      toast('任务导入完成：'+(res.projects?'整体替换项目 '+res.projects+' 个、任务 '+res.tasks+' 条':'')+(res.skipped?'，跳过 '+res.skipped+'（项目不存在）':''),'ok');
+    });
+  }
+
+  /* ================================================================
+   * 事件委托与初始化
+   * ================================================================ */
+  function bindCardOpen(){
+    $$('[data-open]').forEach(function(el){
+      if(el._bound) return; el._bound=true;
+      el.addEventListener('click', function(e){
+        e.stopPropagation();
+        var v=el.getAttribute('data-open');
+        var parts=v.split(':');
+        if(parts[0]==='project') openProjectDetail(parts[1]);
+        else if(parts[0]==='goproject'){
+          selectedProjectId=parts[1]; view='project';
+          if($('#modalMask').classList.contains('show')) closeModal();
+          renderTree(); renderMain();
+        }
+        else if(parts[0]==='task'||parts[0]==='edit-task') openTaskEditForm(parts[1]);
+        else if(parts[0]==='edit') openProjectEditForm(parts[1]);
+      });
+    });
+  }
+  function toggleCurrentStage(stageId){
+    var p=C.find(store.projects,selectedProjectId); if(!p) return;
+    if(p.currentStageId===stageId){
+      p.currentStageId=null; toast('已解除当前阶段锁定（恢复自动推导）','ok');
+    } else {
+      p.currentStageId=stageId; toast('已设为当前阶段（锁定）','ok');
+    }
+    p.updatedAt=C.now(); save(); renderAll();
+  }
+  function cycleStatus(taskId){
+    var t=C.find(store.tasks,taskId); if(!t) return;
+    var i=STATUS_CYCLE.indexOf(t.status);
+    t.status=STATUS_CYCLE[(i+1)%STATUS_CYCLE.length];
+    t.updatedAt=C.now(); save();
+    if(lastMemberDetailId) openMemberDetail(lastMemberDetailId);
+  }
+  var lastMemberDetailId=null;
+  function openMemberDetailWrap(memberId){
+    lastMemberDetailId=memberId;
+    openMemberDetail(memberId);
+  }
+
+  document.addEventListener('click', function(e){
+    var el;
+    if((el=e.target.closest('[data-km]'))){
+      var kmPid=el.getAttribute('data-pid')||selectedProjectId;
+      openKmForm(kmPid, el.getAttribute('data-km'));
+      return;
+    }
+    if((el=e.target.closest('[data-setcur]'))){ toggleCurrentStage(el.getAttribute('data-setcur')); return; }
+    if((el=e.target.closest('[data-proj-pick]'))){ selectedProjectId=el.getAttribute('data-proj-pick'); renderAll(); return; }
+    if((el=e.target.closest('[data-tb-toggle]'))){ taskBoardAll=el.getAttribute('data-tb-toggle')==='1'; renderAll(); return; }
+    if((el=e.target.closest('[data-addtask]'))){
+      var pidForTask=selectedProjectId;
+      openTaskForm(pidForTask, el.getAttribute('data-addtask'));
+      return;
+    }
+    if((el=e.target.closest('[data-cycle]'))){ cycleStatus(el.getAttribute('data-cycle')); return; }
+    if((el=e.target.closest('[data-tagdel]'))){
+      var tid=el.getAttribute('data-tagdel');
+      var tg=C.find(store.tags,tid);
+      confirmBox('删除标签','删除「<b>'+esc(tg?tg.name:'')+'</b>」后，所有任务上的该标签将自动解除引用。确认删除？',function(){
+        C.removeTag(store,tid); save(); renderSettings($('#main')); toast('标签已删除','ok');
+      },true);
+      return;
+    }
+  });
+
+  function render(){ renderTabs(); renderTree(); renderMain(); }
+
+  /* ---------- 初始化 ---------- */
+  function init(){
+    load();
+    $('#btnExport').onclick=function(){
+      var r=this.getBoundingClientRect();
+      menuCtx={
+        json:exportJsonFile, pick:openExportPicker,
+        pcsv:exportProjectsCsvFile, scsv:exportStagesCsvFile, tcsv:exportTasksCsvFile
+      };
+      openMenu(r.left, r.bottom+4, [
+        {act:'json', label:'导出 JSON 完整备份', icon:ICON.download},
+        {act:'pick', label:'按项目筛选导出 JSON', icon:ICON.download},
+        {act:'pcsv', label:'导出项目 CSV', icon:ICON.download},
+        {act:'scsv', label:'导出阶段 CSV（关键节点）', icon:ICON.download},
+        {act:'tcsv', label:'导出任务 CSV', icon:ICON.download}
+      ]);
+    };
+    $('#btnImport').onclick=function(){
+      var r=this.getBoundingClientRect();
+      menuCtx={
+        json:importJsonFile, pcsv:importProjectsCsvFile, scsv:importStagesCsvFile, tcsv:importTasksCsvFile
+      };
+      openMenu(r.left, r.bottom+4, [
+        {act:'json', label:'导入 JSON（按项目合并）', icon:ICON.upload},
+        {act:'pcsv', label:'导入项目 CSV', icon:ICON.upload},
+        {act:'scsv', label:'导入阶段 CSV', icon:ICON.upload},
+        {act:'tcsv', label:'导入任务 CSV', icon:ICON.upload}
+      ]);
+    };
+    $('#btnAddCustomer').onclick=function(){ openProjectForm(scope.customerId); };
+    $('#searchInput').addEventListener('input', function(){ searchKw=this.value.trim(); renderMain(); });
+    $('#main').addEventListener('click', function(e){
+      var opener=e.target.closest('[data-open]');
+      if(!opener) return;
+      var v=opener.getAttribute('data-open');
+      var parts=v.split(':');
+      if(parts[0]==='project') openProjectDetail(parts[1]);
+      else if(parts[0]==='goproject'){ selectedProjectId=parts[1]; view='project'; render(); }
+      else if(parts[0]==='task'||parts[0]==='edit-task') openTaskEditForm(parts[1]);
+      else if(parts[0]==='edit') openProjectEditForm(parts[1]);
+    });
+    render();
+  }
+  /* 注入成员详情包装 */
+  var _openMemberDetailRaw=openMemberDetail;
+  openMemberDetail=function(mid){ lastMemberDetailId=mid; _openMemberDetailRaw(mid); };
+
+  document.addEventListener('DOMContentLoaded', init);
+  if(document.readyState!=='loading') init();
+})();
+</script>
+</body>
+</html>
